@@ -72,6 +72,14 @@ type TagTree struct {
     Children []*TagTree `json:"children,omitempty"`
 }
 
+// NoteTree represents a note and its children in a tree structure
+type NoteTree struct {
+    ID       int         `json:"id"`
+    Title    string      `json:"title"`
+    Type     string      `json:"type"`
+    Children []*NoteTree `json:"children,omitempty"`
+}
+
 // Category represents a category structure
 type Category struct {
     ID   int    `json:"id"`
@@ -143,6 +151,7 @@ func serve() {
 	r.HandleFunc("/notes/hierarchy", addNoteHierarchyEntry).Methods("POST")
 	r.HandleFunc("/tags/hierarchy", addTagHierarchyEntry).Methods("POST")
 	r.HandleFunc("/tags/tree", getTagTree).Methods("GET")
+	r.HandleFunc("/notes/tree", getNoteTree).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -509,4 +518,72 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
         "message": "Category created successfully",
         "id":      categoryID,
     })
+}
+func getNoteTree(w http.ResponseWriter, r *http.Request) {
+    // First, get all notes
+    rows, err := db.Query("SELECT id, title FROM notes")
+    if err != nil {
+        log.Printf("Error querying notes: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    noteMap := make(map[int]*NoteTree)
+    for rows.Next() {
+        var id int
+        var title string
+        if err := rows.Scan(&id, &title); err != nil {
+            log.Printf("Error scanning note row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        noteMap[id] = &NoteTree{ID: id, Title: title}
+    }
+
+    // Get the note hierarchy
+    rows, err = db.Query("SELECT parent_note_id, child_note_id, hierarchy_type FROM note_hierarchy")
+    if err != nil {
+        log.Printf("Error querying note hierarchy: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var parentID, childID int
+        var hierarchyType string
+        if err := rows.Scan(&parentID, &childID, &hierarchyType); err != nil {
+            log.Printf("Error scanning note hierarchy row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        parent := noteMap[parentID]
+        child := noteMap[childID]
+        child.Type = hierarchyType
+        parent.Children = append(parent.Children, child)
+    }
+
+    // Find root notes (notes without parents)
+    var rootNotes []*NoteTree
+    for _, note := range noteMap {
+        isChild := false
+        for _, potentialParent := range noteMap {
+            for _, child := range potentialParent.Children {
+                if child.ID == note.ID {
+                    isChild = true
+                    break
+                }
+            }
+            if isChild {
+                break
+            }
+        }
+        if !isChild {
+            rootNotes = append(rootNotes, note)
+        }
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(rootNotes)
 }
