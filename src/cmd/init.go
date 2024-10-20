@@ -45,7 +45,6 @@ This requires the database to be dropped first, use the drop command to do this.
 		// if err != nil {
 		// 	log.Fatalf("Error opening database connection: %v", err)
 		// }
-        utils.Get_db()
         db := utils.get_db()
 		defer db.Close()
 
