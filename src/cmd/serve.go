@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -899,9 +900,54 @@ func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Fetch all existing hierarchies
+    rows, err := tx.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
+    if err != nil {
+        log.Printf("Error fetching note hierarchies: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var parents, children []int
+    for rows.Next() {
+        var parent, child int
+        if err := rows.Scan(&parent, &child); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        parents = append(parents, parent)
+        children = append(children, child)
+    }
+
+    // Add the new relationship to check
+    childID, err := strconv.Atoi(childNoteID)
+    if err != nil {
+        http.Error(w, "Invalid child note ID", http.StatusBadRequest)
+        return
+    }
+    parents = append(parents, entry.ParentNoteID)
+    children = append(children, childID)
+
+    // Check for cycles
+    if detectCycle(parents, children) {
+        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+        return
+    }
+
     // Update the existing entry
-    result, err := db.Exec(`
-        UPDATE note_hierarchy
+    result, err := tx.Exec(`
+        UPDATE note_hierarchy 
         SET parent_note_id = $1, hierarchy_type = $2
         WHERE child_note_id = $3
     `, entry.ParentNoteID, entry.HierarchyType, childNoteID)
@@ -924,6 +970,51 @@ func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry updated successfully"})
+}
+func detectCycle(parents, children []int) bool {
+    graph := make(map[int][]int)
+    for i := range parents {
+        graph[parents[i]] = append(graph[parents[i]], children[i])
+    }
+
+    visited := make(map[int]bool)
+    recStack := make(map[int]bool)
+
+    var dfs func(node int) bool
+    dfs = func(node int) bool {
+        visited[node] = true
+        recStack[node] = true
+
+        for _, neighbor := range graph[node] {
+            if !visited[neighbor] {
+                if dfs(neighbor) {
+                    return true
+                }
+            } else if recStack[neighbor] {
+                return true
+            }
+        }
+
+        recStack[node] = false
+        return false
+    }
+
+    for node := range graph {
+        if !visited[node] {
+            if dfs(node) {
+                return true
+            }
+        }
+    }
+
+    return false
 }
