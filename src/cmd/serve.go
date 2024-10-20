@@ -429,35 +429,6 @@ func getTagTree(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(rootTags)
 }
 
-func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-	var entry TagHierarchyEntry
-	err := json.NewDecoder(r.Body).Decode(&entry)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Insert the new tag hierarchy entry
-	var entryID int
-	err = db.QueryRow(`
-        INSERT INTO tag_hierarchy (parent_tag_id, child_tag_id)
-        VALUES ($1, $2)
-        RETURNING id
-    `, entry.ParentTagID, entry.ChildTagID).Scan(&entryID)
-
-	if err != nil {
-		log.Printf("Error adding tag hierarchy entry: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "Tag hierarchy entry added successfully",
-		"id":      entryID,
-	})
-}
-
 func addNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 	var entry NoteHierarchyEntry
 	err := json.NewDecoder(r.Body).Decode(&entry)
@@ -948,7 +919,7 @@ func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     // Update the existing entry
     result, err := tx.Exec(`
-        UPDATE note_hierarchy 
+        UPDATE note_hierarchy
         SET parent_note_id = $1, hierarchy_type = $2
         WHERE child_note_id = $3
     `, entry.ParentNoteID, entry.HierarchyType, childNoteID)
@@ -1042,7 +1013,7 @@ func updateTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     // Update the existing entry
     result, err := tx.Exec(`
-        UPDATE tag_hierarchy 
+        UPDATE tag_hierarchy
         SET parent_tag_id = $1
         WHERE child_tag_id = $2
     `, entry.ParentTagID, childTagID)
