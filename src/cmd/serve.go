@@ -58,6 +58,14 @@ type TagHierarchyEntry struct {
     ChildTagID  int `json:"child_tag_id"`
 }
 
+// TagTree represents a tag and its children in a tree structure
+type TagTree struct {
+    ID       int        `json:"id"`
+    Name     string     `json:"name"`
+    NoteIDs  []int      `json:"note_ids"`
+    Children []*TagTree `json:"children,omitempty"`
+}
+
 // Category represents a category structure
 type Category struct {
     ID   int    `json:"id"`
@@ -128,6 +136,7 @@ func serve() {
 	r.HandleFunc("/categories", createCategory).Methods("POST")
 	r.HandleFunc("/notes/hierarchy", addNoteHierarchyEntry).Methods("POST")
 	r.HandleFunc("/tags/hierarchy", addTagHierarchyEntry).Methods("POST")
+	r.HandleFunc("/tags/tree", getTagTree).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -209,6 +218,94 @@ func createNote(w http.ResponseWriter, r *http.Request) {
         "message": "Note created successfully",
         "id":      noteID,
     })
+}
+
+func getTagTree(w http.ResponseWriter, r *http.Request) {
+    // First, get all tags
+    rows, err := db.Query("SELECT id, name FROM tags")
+    if err != nil {
+        log.Printf("Error querying tags: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    tagMap := make(map[int]*TagTree)
+    for rows.Next() {
+        var id int
+        var name string
+        if err := rows.Scan(&id, &name); err != nil {
+            log.Printf("Error scanning tag row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        tagMap[id] = &TagTree{ID: id, Name: name}
+    }
+
+    // Get the tag hierarchy
+    rows, err = db.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
+    if err != nil {
+        log.Printf("Error querying tag hierarchy: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var parentID, childID int
+        if err := rows.Scan(&parentID, &childID); err != nil {
+            log.Printf("Error scanning tag hierarchy row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        parent := tagMap[parentID]
+        child := tagMap[childID]
+        parent.Children = append(parent.Children, child)
+    }
+
+    // Get note IDs for each tag
+    rows, err = db.Query("SELECT tag_id, note_id FROM note_tags")
+    if err != nil {
+        log.Printf("Error querying note tags: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var tagID, noteID int
+        if err := rows.Scan(&tagID, &noteID); err != nil {
+            log.Printf("Error scanning note tag row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        if tag, ok := tagMap[tagID]; ok {
+            tag.NoteIDs = append(tag.NoteIDs, noteID)
+        }
+    }
+
+    // Find root tags (tags without parents)
+    var rootTags []*TagTree
+    for _, tag := range tagMap {
+        isChild := false
+        for _, potentialParent := range tagMap {
+            for _, child := range potentialParent.Children {
+                if child.ID == tag.ID {
+                    isChild = true
+                    break
+                }
+            }
+            if isChild {
+                break
+            }
+        }
+        if !isChild {
+            rootTags = append(rootTags, tag)
+        }
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(rootTags)
 }
 
 func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
