@@ -35,7 +35,7 @@ Create the database:
 
 ```sh
 PGPASSWORD=postgres \
-    psql -h localhost -p 5432 -U postgres -f ./src/cmd/draftsmith.sql
+    psql -h localhost -p 5432 -U postgres -f ./src/cmd/draftsmith.psql
 pg_browser postgres  --host localhost --password postgres --username postgres --port 5432
 ```
 

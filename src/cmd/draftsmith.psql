@@ -1,6 +1,6 @@
--- DROP DATABASE IF EXISTS draftsmith;
--- CREATE DATABASE draftsmith;
--- \c draftsmith;
+DROP DATABASE IF EXISTS draftsmith;
+CREATE DATABASE draftsmith;
+\c draftsmith;
 
 -- Enable full-text search
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

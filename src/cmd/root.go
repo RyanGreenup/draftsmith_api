@@ -55,17 +55,27 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.src.yaml)")
+    rootCmd.PersistentFlags().String("token", "secret", "The token to use for authentication")
+    rootCmd.PersistentFlags().Int("port", 37238, "The port to run the server on")
+    rootCmd.PersistentFlags().Int("db_port", 5432, "The Database Port")
+    rootCmd.PersistentFlags().String("db_host", "localhost", "The Database Host")
+    rootCmd.PersistentFlags().String("db_user", "postgres", "The Database User")
+    rootCmd.PersistentFlags().String("db_pass", "postgres", "The Database Password")
+    rootCmd.PersistentFlags().String("db_name", "draftsmith", "The Database Name")
+
+    // Register with viper
+    viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
+    viper.BindPFlag("port", rootCmd.PersistentFlags().Lookup("port"))
+    viper.BindPFlag("db_port", rootCmd.PersistentFlags().Lookup("db_port"))
+    viper.BindPFlag("db_host", rootCmd.PersistentFlags().Lookup("db_host"))
+    viper.BindPFlag("db_user", rootCmd.PersistentFlags().Lookup("db_user"))
+    viper.BindPFlag("db_pass", rootCmd.PersistentFlags().Lookup("db_pass"))
+    viper.BindPFlag("db_name", rootCmd.PersistentFlags().Lookup("db_name"))
+
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-    rootCmd.Flags().String("token", "secret", "The token to use for authentication")
-    rootCmd.Flags().Int("port", 37238, "The port to run the server on")
-    rootCmd.Flags().Int("db_port", 5432, "The Database Port")
-    rootCmd.Flags().String("db_host", "localhost", "The Database Host")
-    rootCmd.Flags().String("db_user", "postgres", "The Database User")
-    rootCmd.Flags().String("db_pass", "password", "The Database Password")
-    rootCmd.Flags().String("db_name", "draftsmith", "The Database Name")
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.

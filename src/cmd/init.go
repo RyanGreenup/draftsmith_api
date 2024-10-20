@@ -38,7 +38,6 @@ This requires the database to be dropped first, use the drop command to do this.
 		// Connect to the default postgres database
 		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			dbHost, dbPort, dbUser, dbPass, "postgres")
-		fmt.Println(connStr)
 
 		// Open database connection
 		db, err := sql.Open("postgres", connStr)
@@ -48,19 +47,12 @@ This requires the database to be dropped first, use the drop command to do this.
 		defer db.Close()
 
 		// Create the database
-		stmt := fmt.Sprintf("DROP DATABASE IF EXISTS %s", DB_NAME) // TODO move to drop command
-		_, err = db.Exec(stmt)                                     // TODO parameterize
-		if err != nil {
-			log.Fatalf("Error dropping database: %v", err)
-		}
-
-		stmt = fmt.Sprintf("CREATE DATABASE %s", DB_NAME)
+        stmt := fmt.Sprintf("CREATE DATABASE %s", DB_NAME)
 		_, err = db.Exec(stmt) // TODO parameterize
 		if err != nil {
 			log.Fatalf("Error creating database: %v", err)
 		}
 
-		db.Close()
 		// Connect to the new database
 		connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			dbHost, dbPort, dbUser, dbPass, DB_NAME)
