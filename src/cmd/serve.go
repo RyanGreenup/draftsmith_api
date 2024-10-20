@@ -162,6 +162,11 @@ type UpdateTaskSchedule struct {
     EndDatetime   string `json:"end_datetime,omitempty"`
 }
 
+type UpdateTaskClock struct {
+    ClockIn  string `json:"clock_in,omitempty"`
+    ClockOut string `json:"clock_out,omitempty"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
@@ -301,6 +306,7 @@ func serve() {
 	r.HandleFunc("/task_schedules/{id}", updateTaskSchedule).Methods("PUT")
 	r.HandleFunc("/task_schedules/{id}", deleteTaskSchedule).Methods("DELETE")
 	r.HandleFunc("/task_clocks/{id}", deleteTaskClock).Methods("DELETE")
+	r.HandleFunc("/task_clocks/{id}", updateTaskClock).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1646,6 +1652,65 @@ func deleteTaskClock(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry deleted successfully"})
+}
+
+func updateTaskClock(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    clockID := vars["id"]
+
+    var update UpdateTaskClock
+    err := json.NewDecoder(r.Body).Decode(&update)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Start building the SQL query
+    query := "UPDATE task_clocks SET"
+    var args []interface{}
+    var setFields []string
+
+    if update.ClockIn != "" {
+        args = append(args, update.ClockIn)
+        setFields = append(setFields, fmt.Sprintf("clock_in = $%d", len(args)))
+    }
+
+    if update.ClockOut != "" {
+        args = append(args, update.ClockOut)
+        setFields = append(setFields, fmt.Sprintf("clock_out = $%d", len(args)))
+    }
+
+    if len(setFields) == 0 {
+        http.Error(w, "No fields to update", http.StatusBadRequest)
+        return
+    }
+
+    query += " " + strings.Join(setFields, ", ")
+    query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
+    args = append(args, clockID)
+
+    // Execute the query
+    result, err := db.Exec(query, args...)
+    if err != nil {
+        log.Printf("Error updating task clock: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Task clock entry not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry updated successfully"})
 }
 
 // Helper function to check if a string is in a slice
