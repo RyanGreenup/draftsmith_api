@@ -150,6 +150,12 @@ type NewTaskSchedule struct {
     EndDatetime   string `json:"end_datetime"`
 }
 
+type NewTaskClock struct {
+    TaskID   int    `json:"task_id"`
+    ClockIn  string `json:"clock_in"`
+    ClockOut string `json:"clock_out,omitempty"` // ClockOut can be optional
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
     query := r.URL.Query().Get("q")
     if query == "" {
@@ -285,6 +291,7 @@ func serve() {
 	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
 	r.HandleFunc("/tasks/details", getTasksWithDetails).Methods("GET")
 	r.HandleFunc("/task_schedules", createTaskSchedule).Methods("POST")
+	r.HandleFunc("/task_clocks", createTaskClock).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1466,6 +1473,54 @@ func createTaskSchedule(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]interface{}{
         "message": "Task schedule created successfully",
         "id":      scheduleID,
+    })
+}
+
+func createTaskClock(w http.ResponseWriter, r *http.Request) {
+    var newClock NewTaskClock
+    err := json.NewDecoder(r.Body).Decode(&newClock)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the input
+    if newClock.TaskID == 0 {
+        http.Error(w, "Task ID is required", http.StatusBadRequest)
+        return
+    }
+    if newClock.ClockIn == "" {
+        http.Error(w, "Clock in time is required", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new clock entry
+    var clockID int
+    var err error
+    if newClock.ClockOut == "" {
+        err = db.QueryRow(`
+            INSERT INTO task_clocks (task_id, clock_in)
+            VALUES ($1, $2)
+            RETURNING id
+        `, newClock.TaskID, newClock.ClockIn).Scan(&clockID)
+    } else {
+        err = db.QueryRow(`
+            INSERT INTO task_clocks (task_id, clock_in, clock_out)
+            VALUES ($1, $2, $3)
+            RETURNING id
+        `, newClock.TaskID, newClock.ClockIn, newClock.ClockOut).Scan(&clockID)
+    }
+
+    if err != nil {
+        log.Printf("Error creating task clock entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Task clock entry created successfully",
+        "id":      clockID,
     })
 }
 
