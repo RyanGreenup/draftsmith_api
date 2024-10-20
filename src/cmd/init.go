@@ -28,16 +28,16 @@ This requires the database to be dropped first, use the drop command to do this.
 
 		DB_NAME := "draftsmith"
 
-        // Create the default Database
-        utils.Create_db()
+		// Create the default Database
+		utils.Create_db()
 
-        // Connect to the new database
-        db = utils.Get_db(DB_NAME)
-        defer db.Close()
+		// Connect to the new database
+		db = utils.Get_db(DB_NAME)
+		defer db.Close()
 
 		// Execute SQL commands
 		fmt.Println(sql_commands)
-        _, err := db.Exec(sql_commands)
+		_, err := db.Exec(sql_commands)
 		if err != nil {
 			log.Fatalf("Error executing SQL commands: %v", err)
 		}

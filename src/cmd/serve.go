@@ -90,118 +90,118 @@ type TagWithNotes struct {
 
 // UpdateTagRequest represents the request body for updating a tag
 type UpdateTagRequest struct {
-    Name string `json:"name"`
+	Name string `json:"name"`
 }
 
 // NewTask represents the structure for creating a new task
 type NewTask struct {
-    NoteID           int     `json:"note_id"`
-    Status           string  `json:"status"`
-    EffortEstimate   float64 `json:"effort_estimate"`
-    ActualEffort     float64 `json:"actual_effort"`
-    Deadline         string  `json:"deadline"`
-    Priority         int     `json:"priority"`
-    AllDay           bool    `json:"all_day"`
-    GoalRelationship int     `json:"goal_relationship"`
+	NoteID           int     `json:"note_id"`
+	Status           string  `json:"status"`
+	EffortEstimate   float64 `json:"effort_estimate"`
+	ActualEffort     float64 `json:"actual_effort"`
+	Deadline         string  `json:"deadline"`
+	Priority         int     `json:"priority"`
+	AllDay           bool    `json:"all_day"`
+	GoalRelationship int     `json:"goal_relationship"`
 }
 
 // UpdateTask represents the structure for updating an existing task
 type UpdateTask struct {
-    Status           *string  `json:"status,omitempty"`
-    EffortEstimate   *float64 `json:"effort_estimate,omitempty"`
-    ActualEffort     *float64 `json:"actual_effort,omitempty"`
-    Deadline         *string  `json:"deadline,omitempty"`
-    Priority         *int     `json:"priority,omitempty"`
-    AllDay           *bool    `json:"all_day,omitempty"`
-    GoalRelationship *int     `json:"goal_relationship,omitempty"`
+	Status           *string  `json:"status,omitempty"`
+	EffortEstimate   *float64 `json:"effort_estimate,omitempty"`
+	ActualEffort     *float64 `json:"actual_effort,omitempty"`
+	Deadline         *string  `json:"deadline,omitempty"`
+	Priority         *int     `json:"priority,omitempty"`
+	AllDay           *bool    `json:"all_day,omitempty"`
+	GoalRelationship *int     `json:"goal_relationship,omitempty"`
 }
 
 type TaskWithDetails struct {
-    ID               int             `json:"id"`
-    NoteID           int             `json:"note_id"`
-    Status           string          `json:"status"`
-    EffortEstimate   float64         `json:"effort_estimate"`
-    ActualEffort     float64         `json:"actual_effort"`
-    Deadline         string          `json:"deadline"`
-    Priority         int             `json:"priority"`
-    AllDay           bool            `json:"all_day"`
-    GoalRelationship int             `json:"goal_relationship"`
-    CreatedAt        string          `json:"created_at"`
-    ModifiedAt       string          `json:"modified_at"`
-    Schedules        []TaskSchedule  `json:"schedules"`
-    Clocks           []TaskClock     `json:"clocks"`
+	ID               int            `json:"id"`
+	NoteID           int            `json:"note_id"`
+	Status           string         `json:"status"`
+	EffortEstimate   float64        `json:"effort_estimate"`
+	ActualEffort     float64        `json:"actual_effort"`
+	Deadline         string         `json:"deadline"`
+	Priority         int            `json:"priority"`
+	AllDay           bool           `json:"all_day"`
+	GoalRelationship int            `json:"goal_relationship"`
+	CreatedAt        string         `json:"created_at"`
+	ModifiedAt       string         `json:"modified_at"`
+	Schedules        []TaskSchedule `json:"schedules"`
+	Clocks           []TaskClock    `json:"clocks"`
 }
 
 type TaskSchedule struct {
-    ID            int    `json:"id"`
-    StartDatetime string `json:"start_datetime"`
-    EndDatetime   string `json:"end_datetime"`
+	ID            int    `json:"id"`
+	StartDatetime string `json:"start_datetime"`
+	EndDatetime   string `json:"end_datetime"`
 }
 
 type TaskClock struct {
-    ID       int    `json:"id"`
-    ClockIn  string `json:"clock_in"`
-    ClockOut string `json:"clock_out"`
+	ID       int    `json:"id"`
+	ClockIn  string `json:"clock_in"`
+	ClockOut string `json:"clock_out"`
 }
 
 type NewTaskSchedule struct {
-    TaskID        int    `json:"task_id"`
-    StartDatetime string `json:"start_datetime"`
-    EndDatetime   string `json:"end_datetime"`
+	TaskID        int    `json:"task_id"`
+	StartDatetime string `json:"start_datetime"`
+	EndDatetime   string `json:"end_datetime"`
 }
 
 type NewTaskClock struct {
-    TaskID   int    `json:"task_id"`
-    ClockIn  string `json:"clock_in"`
-    ClockOut string `json:"clock_out,omitempty"` // ClockOut can be optional
+	TaskID   int    `json:"task_id"`
+	ClockIn  string `json:"clock_in"`
+	ClockOut string `json:"clock_out,omitempty"` // ClockOut can be optional
 }
 
 func searchNotes(w http.ResponseWriter, r *http.Request) {
-    query := r.URL.Query().Get("q")
-    if query == "" {
-        http.Error(w, "Query parameter 'q' is required", http.StatusBadRequest)
-        return
-    }
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, "Query parameter 'q' is required", http.StatusBadRequest)
+		return
+	}
 
-    rows, err := db.Query(`
+	rows, err := db.Query(`
         SELECT id, title
         FROM notes
         WHERE to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', $1)
         ORDER BY ts_rank(to_tsvector('english', title || ' ' || content), plainto_tsquery('english', $1)) DESC
     `, query)
-    if err != nil {
-        log.Printf("Error querying database: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	if err != nil {
+		log.Printf("Error querying database: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    var notes []struct {
-        ID    int    `json:"id"`
-        Title string `json:"title"`
-    }
+	var notes []struct {
+		ID    int    `json:"id"`
+		Title string `json:"title"`
+	}
 
-    for rows.Next() {
-        var note struct {
-            ID    int    `json:"id"`
-            Title string `json:"title"`
-        }
-        if err := rows.Scan(&note.ID, &note.Title); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
-        notes = append(notes, note)
-    }
+	for rows.Next() {
+		var note struct {
+			ID    int    `json:"id"`
+			Title string `json:"title"`
+		}
+		if err := rows.Scan(&note.ID, &note.Title); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		notes = append(notes, note)
+	}
 
-    if err := rows.Err(); err != nil {
-        log.Printf("Error after scanning rows: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err := rows.Err(); err != nil {
+		log.Printf("Error after scanning rows: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(notes)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notes)
 }
 
 // Category represents a category structure
@@ -219,7 +219,7 @@ type NewCategory struct {
 type NoteHierarchyEntry struct {
 	ParentNoteID  int    `json:"parent_note_id"`
 	HierarchyType string `json:"hierarchy_type"`
-    ChildNoteID   int    `json:"child_note_id"`
+	ChildNoteID   int    `json:"child_note_id"`
 }
 
 // serveCmd represents the serve command
@@ -501,85 +501,85 @@ func getTagTree(w http.ResponseWriter, r *http.Request) {
 }
 
 func addNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-    var entry NoteHierarchyEntry
-    err := json.NewDecoder(r.Body).Decode(&entry)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var entry NoteHierarchyEntry
+	err := json.NewDecoder(r.Body).Decode(&entry)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Validate hierarchy_type
-    if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
-        http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
-        return
-    }
+	// Validate hierarchy_type
+	if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
+		http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
+		return
+	}
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Fetch all existing hierarchies
-    rows, err := tx.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
-    if err != nil {
-        log.Printf("Error fetching note hierarchies: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	// Fetch all existing hierarchies
+	rows, err := tx.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
+	if err != nil {
+		log.Printf("Error fetching note hierarchies: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    var parents, children []int
-    for rows.Next() {
-        var parent, child int
-        if err := rows.Scan(&parent, &child); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
-        parents = append(parents, parent)
-        children = append(children, child)
-    }
+	var parents, children []int
+	for rows.Next() {
+		var parent, child int
+		if err := rows.Scan(&parent, &child); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		parents = append(parents, parent)
+		children = append(children, child)
+	}
 
-    // Add the new relationship to check
-    parents = append(parents, entry.ParentNoteID)
-    children = append(children, entry.ChildNoteID)
+	// Add the new relationship to check
+	parents = append(parents, entry.ParentNoteID)
+	children = append(children, entry.ChildNoteID)
 
-    // Check for cycles
-    if detectCycle(parents, children) {
-        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
-        return
-    }
+	// Check for cycles
+	if detectCycle(parents, children) {
+		http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+		return
+	}
 
-    // Insert the new hierarchy entry
-    var entryID int
-    err = tx.QueryRow(`
+	// Insert the new hierarchy entry
+	var entryID int
+	err = tx.QueryRow(`
         INSERT INTO note_hierarchy (parent_note_id, child_note_id, hierarchy_type)
         VALUES ($1, $2, $3)
         RETURNING id
     `, entry.ParentNoteID, entry.ChildNoteID, entry.HierarchyType).Scan(&entryID)
 
-    if err != nil {
-        log.Printf("Error adding note hierarchy entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error adding note hierarchy entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]interface{}{
-        "message": "Note hierarchy entry added successfully",
-        "id":      entryID,
-    })
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Note hierarchy entry added successfully",
+		"id":      entryID,
+	})
 }
 
 func listTags(w http.ResponseWriter, r *http.Request) {
@@ -835,7 +835,7 @@ func getTagsWithNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func getNoteTitlesAndIDs(w http.ResponseWriter, r *http.Request) {
-    // I couldn't get arguments to work so I'm just going to hardcode the route.
+	// I couldn't get arguments to work so I'm just going to hardcode the route.
 
 	type Note struct {
 		ID         int    `json:"id"`
@@ -878,485 +878,485 @@ func getNoteTitlesAndIDs(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateTag(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    tagID := vars["id"]
+	vars := mux.Vars(r)
+	tagID := vars["id"]
 
-    var req UpdateTagRequest
-    err := json.NewDecoder(r.Body).Decode(&req)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var req UpdateTagRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    if req.Name == "" {
-        http.Error(w, "Tag name cannot be empty", http.StatusBadRequest)
-        return
-    }
+	if req.Name == "" {
+		http.Error(w, "Tag name cannot be empty", http.StatusBadRequest)
+		return
+	}
 
-    result, err := db.Exec("UPDATE tags SET name = $1 WHERE id = $2", req.Name, tagID)
-    if err != nil {
-        log.Printf("Error updating tag: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	result, err := db.Exec("UPDATE tags SET name = $1 WHERE id = $2", req.Name, tagID)
+	if err != nil {
+		log.Printf("Error updating tag: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Tag not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Tag not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Tag updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Tag updated successfully"})
 }
 
 func deleteTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    childTagID := vars["childId"]
+	vars := mux.Vars(r)
+	childTagID := vars["childId"]
 
-    // Execute the delete query
-    result, err := db.Exec("DELETE FROM tag_hierarchy WHERE child_tag_id = $1", childTagID)
-    if err != nil {
-        log.Printf("Error deleting tag hierarchy entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the delete query
+	result, err := db.Exec("DELETE FROM tag_hierarchy WHERE child_tag_id = $1", childTagID)
+	if err != nil {
+		log.Printf("Error deleting tag hierarchy entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Tag hierarchy entry not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Tag hierarchy entry not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry deleted successfully"})
 }
 
 func deleteNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    childNoteID := vars["childId"]
+	vars := mux.Vars(r)
+	childNoteID := vars["childId"]
 
-    // Execute the delete query
-    result, err := db.Exec("DELETE FROM note_hierarchy WHERE child_note_id = $1", childNoteID)
-    if err != nil {
-        log.Printf("Error deleting note hierarchy entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the delete query
+	result, err := db.Exec("DELETE FROM note_hierarchy WHERE child_note_id = $1", childNoteID)
+	if err != nil {
+		log.Printf("Error deleting note hierarchy entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Note hierarchy entry not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Note hierarchy entry not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry deleted successfully"})
 }
 
 func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    childNoteID := vars["childId"]
+	vars := mux.Vars(r)
+	childNoteID := vars["childId"]
 
-    var entry NoteHierarchyEntry
-    err := json.NewDecoder(r.Body).Decode(&entry)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var entry NoteHierarchyEntry
+	err := json.NewDecoder(r.Body).Decode(&entry)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Validate hierarchy_type
-    if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
-        http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
-        return
-    }
+	// Validate hierarchy_type
+	if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
+		http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
+		return
+	}
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Fetch all existing hierarchies
-    rows, err := tx.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
-    if err != nil {
-        log.Printf("Error fetching note hierarchies: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	// Fetch all existing hierarchies
+	rows, err := tx.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
+	if err != nil {
+		log.Printf("Error fetching note hierarchies: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    var parents, children []int
-    for rows.Next() {
-        var parent, child int
-        if err := rows.Scan(&parent, &child); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
-        parents = append(parents, parent)
-        children = append(children, child)
-    }
+	var parents, children []int
+	for rows.Next() {
+		var parent, child int
+		if err := rows.Scan(&parent, &child); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		parents = append(parents, parent)
+		children = append(children, child)
+	}
 
-    // Add the new relationship to check
-    childID, err := strconv.Atoi(childNoteID)
-    if err != nil {
-        http.Error(w, "Invalid child note ID", http.StatusBadRequest)
-        return
-    }
-    parents = append(parents, entry.ParentNoteID)
-    children = append(children, childID)
+	// Add the new relationship to check
+	childID, err := strconv.Atoi(childNoteID)
+	if err != nil {
+		http.Error(w, "Invalid child note ID", http.StatusBadRequest)
+		return
+	}
+	parents = append(parents, entry.ParentNoteID)
+	children = append(children, childID)
 
-    // Check for cycles
-    if detectCycle(parents, children) {
-        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
-        return
-    }
+	// Check for cycles
+	if detectCycle(parents, children) {
+		http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+		return
+	}
 
-    // Update the existing entry
-    result, err := tx.Exec(`
+	// Update the existing entry
+	result, err := tx.Exec(`
         UPDATE note_hierarchy
         SET parent_note_id = $1, hierarchy_type = $2
         WHERE child_note_id = $3
     `, entry.ParentNoteID, entry.HierarchyType, childNoteID)
 
-    if err != nil {
-        log.Printf("Error updating note hierarchy entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error updating note hierarchy entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Note hierarchy entry not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Note hierarchy entry not found", http.StatusNotFound)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry updated successfully"})
 }
 
 func updateTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    childTagID := vars["childId"]
+	vars := mux.Vars(r)
+	childTagID := vars["childId"]
 
-    var entry struct {
-        ParentTagID int `json:"parent_tag_id"`
-    }
-    err := json.NewDecoder(r.Body).Decode(&entry)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var entry struct {
+		ParentTagID int `json:"parent_tag_id"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&entry)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Fetch all existing hierarchies
-    rows, err := tx.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
-    if err != nil {
-        log.Printf("Error fetching tag hierarchies: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	// Fetch all existing hierarchies
+	rows, err := tx.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
+	if err != nil {
+		log.Printf("Error fetching tag hierarchies: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    var parents, children []int
-    for rows.Next() {
-        var parent, child int
-        if err := rows.Scan(&parent, &child); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
-        parents = append(parents, parent)
-        children = append(children, child)
-    }
+	var parents, children []int
+	for rows.Next() {
+		var parent, child int
+		if err := rows.Scan(&parent, &child); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		parents = append(parents, parent)
+		children = append(children, child)
+	}
 
-    // Add the new relationship to check
-    childID, err := strconv.Atoi(childTagID)
-    if err != nil {
-        http.Error(w, "Invalid child tag ID", http.StatusBadRequest)
-        return
-    }
-    parents = append(parents, entry.ParentTagID)
-    children = append(children, childID)
+	// Add the new relationship to check
+	childID, err := strconv.Atoi(childTagID)
+	if err != nil {
+		http.Error(w, "Invalid child tag ID", http.StatusBadRequest)
+		return
+	}
+	parents = append(parents, entry.ParentTagID)
+	children = append(children, childID)
 
-    // Check for cycles
-    if detectCycle(parents, children) {
-        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
-        return
-    }
+	// Check for cycles
+	if detectCycle(parents, children) {
+		http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+		return
+	}
 
-    // Update the existing entry
-    result, err := tx.Exec(`
+	// Update the existing entry
+	result, err := tx.Exec(`
         UPDATE tag_hierarchy
         SET parent_tag_id = $1
         WHERE child_tag_id = $2
     `, entry.ParentTagID, childTagID)
 
-    if err != nil {
-        log.Printf("Error updating tag hierarchy entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error updating tag hierarchy entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Tag hierarchy entry not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Tag hierarchy entry not found", http.StatusNotFound)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry updated successfully"})
 }
 
 func createTask(w http.ResponseWriter, r *http.Request) {
-    var newTask NewTask
-    err := json.NewDecoder(r.Body).Decode(&newTask)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var newTask NewTask
+	err := json.NewDecoder(r.Body).Decode(&newTask)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Validate the status
-    validStatuses := []string{"todo", "done", "wait", "hold", "idea", "kill", "proj", "event"}
-    if !contains(validStatuses, newTask.Status) {
-        http.Error(w, "Invalid status", http.StatusBadRequest)
-        return
-    }
+	// Validate the status
+	validStatuses := []string{"todo", "done", "wait", "hold", "idea", "kill", "proj", "event"}
+	if !contains(validStatuses, newTask.Status) {
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
+	}
 
-    // Validate the priority
-    if newTask.Priority < 1 || newTask.Priority > 5 {
-        http.Error(w, "Priority must be between 1 and 5", http.StatusBadRequest)
-        return
-    }
+	// Validate the priority
+	if newTask.Priority < 1 || newTask.Priority > 5 {
+		http.Error(w, "Priority must be between 1 and 5", http.StatusBadRequest)
+		return
+	}
 
-    // Validate the goal relationship
-    if newTask.GoalRelationship < 1 || newTask.GoalRelationship > 5 {
-        http.Error(w, "Goal relationship must be between 1 and 5", http.StatusBadRequest)
-        return
-    }
+	// Validate the goal relationship
+	if newTask.GoalRelationship < 1 || newTask.GoalRelationship > 5 {
+		http.Error(w, "Goal relationship must be between 1 and 5", http.StatusBadRequest)
+		return
+	}
 
-    var taskID int
-    err = db.QueryRow(`
+	var taskID int
+	err = db.QueryRow(`
         INSERT INTO tasks (note_id, status, effort_estimate, actual_effort, deadline, priority, all_day, goal_relationship)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
     `, newTask.NoteID, newTask.Status, newTask.EffortEstimate, newTask.ActualEffort, newTask.Deadline, newTask.Priority, newTask.AllDay, newTask.GoalRelationship).Scan(&taskID)
 
-    if err != nil {
-        log.Printf("Error creating task: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error creating task: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]interface{}{
-        "message": "Task created successfully",
-        "id":      taskID,
-    })
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Task created successfully",
+		"id":      taskID,
+	})
 }
 
 func updateTask(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    taskID := vars["id"]
+	vars := mux.Vars(r)
+	taskID := vars["id"]
 
-    var update UpdateTask
-    err := json.NewDecoder(r.Body).Decode(&update)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var update UpdateTask
+	err := json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Start building the SQL query
-    query := "UPDATE tasks SET modified_at = CURRENT_TIMESTAMP"
-    var args []interface{}
-    var argIndex int = 1
+	// Start building the SQL query
+	query := "UPDATE tasks SET modified_at = CURRENT_TIMESTAMP"
+	var args []interface{}
+	var argIndex int = 1
 
-    // Validate and add fields to update
-    if update.Status != nil {
-        validStatuses := []string{"todo", "done", "wait", "hold", "idea", "kill", "proj", "event"}
-        if !contains(validStatuses, *update.Status) {
-            http.Error(w, "Invalid status", http.StatusBadRequest)
-            return
-        }
-        query += fmt.Sprintf(", status = $%d", argIndex)
-        args = append(args, *update.Status)
-        argIndex++
-    }
+	// Validate and add fields to update
+	if update.Status != nil {
+		validStatuses := []string{"todo", "done", "wait", "hold", "idea", "kill", "proj", "event"}
+		if !contains(validStatuses, *update.Status) {
+			http.Error(w, "Invalid status", http.StatusBadRequest)
+			return
+		}
+		query += fmt.Sprintf(", status = $%d", argIndex)
+		args = append(args, *update.Status)
+		argIndex++
+	}
 
-    if update.EffortEstimate != nil {
-        query += fmt.Sprintf(", effort_estimate = $%d", argIndex)
-        args = append(args, *update.EffortEstimate)
-        argIndex++
-    }
+	if update.EffortEstimate != nil {
+		query += fmt.Sprintf(", effort_estimate = $%d", argIndex)
+		args = append(args, *update.EffortEstimate)
+		argIndex++
+	}
 
-    if update.ActualEffort != nil {
-        query += fmt.Sprintf(", actual_effort = $%d", argIndex)
-        args = append(args, *update.ActualEffort)
-        argIndex++
-    }
+	if update.ActualEffort != nil {
+		query += fmt.Sprintf(", actual_effort = $%d", argIndex)
+		args = append(args, *update.ActualEffort)
+		argIndex++
+	}
 
-    if update.Deadline != nil {
-        query += fmt.Sprintf(", deadline = $%d", argIndex)
-        args = append(args, *update.Deadline)
-        argIndex++
-    }
+	if update.Deadline != nil {
+		query += fmt.Sprintf(", deadline = $%d", argIndex)
+		args = append(args, *update.Deadline)
+		argIndex++
+	}
 
-    if update.Priority != nil {
-        if *update.Priority < 1 || *update.Priority > 5 {
-            http.Error(w, "Priority must be between 1 and 5", http.StatusBadRequest)
-            return
-        }
-        query += fmt.Sprintf(", priority = $%d", argIndex)
-        args = append(args, *update.Priority)
-        argIndex++
-    }
+	if update.Priority != nil {
+		if *update.Priority < 1 || *update.Priority > 5 {
+			http.Error(w, "Priority must be between 1 and 5", http.StatusBadRequest)
+			return
+		}
+		query += fmt.Sprintf(", priority = $%d", argIndex)
+		args = append(args, *update.Priority)
+		argIndex++
+	}
 
-    if update.AllDay != nil {
-        query += fmt.Sprintf(", all_day = $%d", argIndex)
-        args = append(args, *update.AllDay)
-        argIndex++
-    }
+	if update.AllDay != nil {
+		query += fmt.Sprintf(", all_day = $%d", argIndex)
+		args = append(args, *update.AllDay)
+		argIndex++
+	}
 
-    if update.GoalRelationship != nil {
-        if *update.GoalRelationship < 1 || *update.GoalRelationship > 5 {
-            http.Error(w, "Goal relationship must be between 1 and 5", http.StatusBadRequest)
-            return
-        }
-        query += fmt.Sprintf(", goal_relationship = $%d", argIndex)
-        args = append(args, *update.GoalRelationship)
-        argIndex++
-    }
+	if update.GoalRelationship != nil {
+		if *update.GoalRelationship < 1 || *update.GoalRelationship > 5 {
+			http.Error(w, "Goal relationship must be between 1 and 5", http.StatusBadRequest)
+			return
+		}
+		query += fmt.Sprintf(", goal_relationship = $%d", argIndex)
+		args = append(args, *update.GoalRelationship)
+		argIndex++
+	}
 
-    query += fmt.Sprintf(" WHERE id = $%d", argIndex)
-    args = append(args, taskID)
+	query += fmt.Sprintf(" WHERE id = $%d", argIndex)
+	args = append(args, taskID)
 
-    // Execute the query
-    result, err := db.Exec(query, args...)
-    if err != nil {
-        log.Printf("Error updating task: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the query
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		log.Printf("Error updating task: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Task not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Task updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Task updated successfully"})
 }
 
 func deleteTask(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    taskID := vars["id"]
+	vars := mux.Vars(r)
+	taskID := vars["id"]
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Delete the task
-    result, err := tx.Exec("DELETE FROM tasks WHERE id = $1", taskID)
-    if err != nil {
-        log.Printf("Error deleting task: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete the task
+	result, err := tx.Exec("DELETE FROM tasks WHERE id = $1", taskID)
+	if err != nil {
+		log.Printf("Error deleting task: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Task not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Task not found", http.StatusNotFound)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Task deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Task deleted successfully"})
 }
 
 func getTasksWithDetails(w http.ResponseWriter, r *http.Request) {
-    // Query to get tasks with their schedules and clocks
-    query := `
+	// Query to get tasks with their schedules and clocks
+	query := `
         SELECT
             t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort,
             t.deadline, t.priority, t.all_day, t.goal_relationship,
@@ -1369,408 +1369,408 @@ func getTasksWithDetails(w http.ResponseWriter, r *http.Request) {
         ORDER BY t.id, ts.id, tc.id
     `
 
-    rows, err := db.Query(query)
-    if err != nil {
-        log.Printf("Error querying tasks: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("Error querying tasks: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    tasksMap := make(map[int]*TaskWithDetails)
+	tasksMap := make(map[int]*TaskWithDetails)
 
-    for rows.Next() {
-        var task TaskWithDetails
-        var schedule TaskSchedule
-        var clock TaskClock
-        var scheduleID, clockID sql.NullInt64
-        var startDatetime, endDatetime, clockIn, clockOut sql.NullString
+	for rows.Next() {
+		var task TaskWithDetails
+		var schedule TaskSchedule
+		var clock TaskClock
+		var scheduleID, clockID sql.NullInt64
+		var startDatetime, endDatetime, clockIn, clockOut sql.NullString
 
-        err := rows.Scan(
-            &task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
-            &task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
-            &task.CreatedAt, &task.ModifiedAt,
-            &scheduleID, &startDatetime, &endDatetime,
-            &clockID, &clockIn, &clockOut,
-        )
-        if err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
+		err := rows.Scan(
+			&task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
+			&task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
+			&task.CreatedAt, &task.ModifiedAt,
+			&scheduleID, &startDatetime, &endDatetime,
+			&clockID, &clockIn, &clockOut,
+		)
+		if err != nil {
+			log.Printf("Error scanning row: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 
-        if existingTask, ok := tasksMap[task.ID]; ok {
-            task = *existingTask
-        } else {
-            tasksMap[task.ID] = &task
-        }
+		if existingTask, ok := tasksMap[task.ID]; ok {
+			task = *existingTask
+		} else {
+			tasksMap[task.ID] = &task
+		}
 
-        if scheduleID.Valid {
-            schedule.ID = int(scheduleID.Int64)
-            schedule.StartDatetime = startDatetime.String
-            schedule.EndDatetime = endDatetime.String
-            task.Schedules = append(task.Schedules, schedule)
-        }
+		if scheduleID.Valid {
+			schedule.ID = int(scheduleID.Int64)
+			schedule.StartDatetime = startDatetime.String
+			schedule.EndDatetime = endDatetime.String
+			task.Schedules = append(task.Schedules, schedule)
+		}
 
-        if clockID.Valid {
-            clock.ID = int(clockID.Int64)
-            clock.ClockIn = clockIn.String
-            clock.ClockOut = clockOut.String
-            task.Clocks = append(task.Clocks, clock)
-        }
+		if clockID.Valid {
+			clock.ID = int(clockID.Int64)
+			clock.ClockIn = clockIn.String
+			clock.ClockOut = clockOut.String
+			task.Clocks = append(task.Clocks, clock)
+		}
 
-        tasksMap[task.ID] = &task
-    }
+		tasksMap[task.ID] = &task
+	}
 
-    if err := rows.Err(); err != nil {
-        log.Printf("Error after scanning rows: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err := rows.Err(); err != nil {
+		log.Printf("Error after scanning rows: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    tasks := make([]*TaskWithDetails, 0, len(tasksMap))
-    for _, task := range tasksMap {
-        tasks = append(tasks, task)
-    }
+	tasks := make([]*TaskWithDetails, 0, len(tasksMap))
+	for _, task := range tasksMap {
+		tasks = append(tasks, task)
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(tasks)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
 }
 
 func createTaskSchedule(w http.ResponseWriter, r *http.Request) {
-    var newSchedule NewTaskSchedule
-    err := json.NewDecoder(r.Body).Decode(&newSchedule)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var newSchedule NewTaskSchedule
+	err := json.NewDecoder(r.Body).Decode(&newSchedule)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Validate the input
-    if newSchedule.TaskID == 0 {
-        http.Error(w, "Task ID is required", http.StatusBadRequest)
-        return
-    }
-    if newSchedule.StartDatetime == "" || newSchedule.EndDatetime == "" {
-        http.Error(w, "Start and end datetimes are required", http.StatusBadRequest)
-        return
-    }
+	// Validate the input
+	if newSchedule.TaskID == 0 {
+		http.Error(w, "Task ID is required", http.StatusBadRequest)
+		return
+	}
+	if newSchedule.StartDatetime == "" || newSchedule.EndDatetime == "" {
+		http.Error(w, "Start and end datetimes are required", http.StatusBadRequest)
+		return
+	}
 
-    // Insert the new schedule
-    var scheduleID int
-    err = db.QueryRow(`
+	// Insert the new schedule
+	var scheduleID int
+	err = db.QueryRow(`
         INSERT INTO task_schedules (task_id, start_datetime, end_datetime)
         VALUES ($1, $2, $3)
         RETURNING id
     `, newSchedule.TaskID, newSchedule.StartDatetime, newSchedule.EndDatetime).Scan(&scheduleID)
 
-    if err != nil {
-        log.Printf("Error creating task schedule: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error creating task schedule: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]interface{}{
-        "message": "Task schedule created successfully",
-        "id":      scheduleID,
-    })
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Task schedule created successfully",
+		"id":      scheduleID,
+	})
 }
 
 func createTaskClock(w http.ResponseWriter, r *http.Request) {
-    var newClock NewTaskClock
-    var err error
-    err = json.NewDecoder(r.Body).Decode(&newClock)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var newClock NewTaskClock
+	var err error
+	err = json.NewDecoder(r.Body).Decode(&newClock)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Validate the input
-    if newClock.TaskID == 0 {
-        http.Error(w, "Task ID is required", http.StatusBadRequest)
-        return
-    }
-    if newClock.ClockIn == "" {
-        http.Error(w, "Clock in time is required", http.StatusBadRequest)
-        return
-    }
+	// Validate the input
+	if newClock.TaskID == 0 {
+		http.Error(w, "Task ID is required", http.StatusBadRequest)
+		return
+	}
+	if newClock.ClockIn == "" {
+		http.Error(w, "Clock in time is required", http.StatusBadRequest)
+		return
+	}
 
-    // Insert the new clock entry
-    var clockID int
-    if newClock.ClockOut == "" {
-        err = db.QueryRow(`
+	// Insert the new clock entry
+	var clockID int
+	if newClock.ClockOut == "" {
+		err = db.QueryRow(`
             INSERT INTO task_clocks (task_id, clock_in)
             VALUES ($1, $2)
             RETURNING id
         `, newClock.TaskID, newClock.ClockIn).Scan(&clockID)
-    } else {
-        err = db.QueryRow(`
+	} else {
+		err = db.QueryRow(`
             INSERT INTO task_clocks (task_id, clock_in, clock_out)
             VALUES ($1, $2, $3)
             RETURNING id
         `, newClock.TaskID, newClock.ClockIn, newClock.ClockOut).Scan(&clockID)
-    }
+	}
 
-    if err != nil {
-        log.Printf("Error creating task clock entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error creating task clock entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]interface{}{
-        "message": "Task clock entry created successfully",
-        "id":      clockID,
-    })
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Task clock entry created successfully",
+		"id":      clockID,
+	})
 }
 
 // Helper function to check if a string is in a slice
 func contains(slice []string, item string) bool {
-    for _, s := range slice {
-        if s == item {
-            return true
-        }
-    }
-    return false
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 func deleteTag(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    tagID := vars["id"]
+	vars := mux.Vars(r)
+	tagID := vars["id"]
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Delete related entries in note_tags
-    _, err = tx.Exec("DELETE FROM note_tags WHERE tag_id = $1", tagID)
-    if err != nil {
-        log.Printf("Error deleting from note_tags: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete related entries in note_tags
+	_, err = tx.Exec("DELETE FROM note_tags WHERE tag_id = $1", tagID)
+	if err != nil {
+		log.Printf("Error deleting from note_tags: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Delete related entries in tag_hierarchy
-    _, err = tx.Exec("DELETE FROM tag_hierarchy WHERE parent_tag_id = $1 OR child_tag_id = $1", tagID)
-    if err != nil {
-        log.Printf("Error deleting from tag_hierarchy: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete related entries in tag_hierarchy
+	_, err = tx.Exec("DELETE FROM tag_hierarchy WHERE parent_tag_id = $1 OR child_tag_id = $1", tagID)
+	if err != nil {
+		log.Printf("Error deleting from tag_hierarchy: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Delete the tag
-    result, err := tx.Exec("DELETE FROM tags WHERE id = $1", tagID)
-    if err != nil {
-        log.Printf("Error deleting tag: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete the tag
+	result, err := tx.Exec("DELETE FROM tags WHERE id = $1", tagID)
+	if err != nil {
+		log.Printf("Error deleting tag: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Tag not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Tag not found", http.StatusNotFound)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Tag deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Tag deleted successfully"})
 }
 
 func deleteNote(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    noteID := vars["id"]
+	vars := mux.Vars(r)
+	noteID := vars["id"]
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Delete related entries in note_tags
-    _, err = tx.Exec("DELETE FROM note_tags WHERE note_id = $1", noteID)
-    if err != nil {
-        log.Printf("Error deleting from note_tags: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete related entries in note_tags
+	_, err = tx.Exec("DELETE FROM note_tags WHERE note_id = $1", noteID)
+	if err != nil {
+		log.Printf("Error deleting from note_tags: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Delete related entries in note_categories
-    _, err = tx.Exec("DELETE FROM note_categories WHERE note_id = $1", noteID)
-    if err != nil {
-        log.Printf("Error deleting from note_categories: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete related entries in note_categories
+	_, err = tx.Exec("DELETE FROM note_categories WHERE note_id = $1", noteID)
+	if err != nil {
+		log.Printf("Error deleting from note_categories: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Delete related entries in note_hierarchy
-    _, err = tx.Exec("DELETE FROM note_hierarchy WHERE parent_note_id = $1 OR child_note_id = $1", noteID)
-    if err != nil {
-        log.Printf("Error deleting from note_hierarchy: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete related entries in note_hierarchy
+	_, err = tx.Exec("DELETE FROM note_hierarchy WHERE parent_note_id = $1 OR child_note_id = $1", noteID)
+	if err != nil {
+		log.Printf("Error deleting from note_hierarchy: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Delete the note
-    result, err := tx.Exec("DELETE FROM notes WHERE id = $1", noteID)
-    if err != nil {
-        log.Printf("Error deleting note: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Delete the note
+	result, err := tx.Exec("DELETE FROM notes WHERE id = $1", noteID)
+	if err != nil {
+		log.Printf("Error deleting note: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Note not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Note not found", http.StatusNotFound)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Note deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Note deleted successfully"})
 }
 
 func detectCycle(parents, children []int) bool {
-    graph := make(map[int][]int)
-    for i := range parents {
-        graph[parents[i]] = append(graph[parents[i]], children[i])
-    }
+	graph := make(map[int][]int)
+	for i := range parents {
+		graph[parents[i]] = append(graph[parents[i]], children[i])
+	}
 
-    visited := make(map[int]bool)
-    recStack := make(map[int]bool)
+	visited := make(map[int]bool)
+	recStack := make(map[int]bool)
 
-    var dfs func(node int) bool
-    dfs = func(node int) bool {
-        visited[node] = true
-        recStack[node] = true
+	var dfs func(node int) bool
+	dfs = func(node int) bool {
+		visited[node] = true
+		recStack[node] = true
 
-        for _, neighbor := range graph[node] {
-            if !visited[neighbor] {
-                if dfs(neighbor) {
-                    return true
-                }
-            } else if recStack[neighbor] {
-                return true
-            }
-        }
+		for _, neighbor := range graph[node] {
+			if !visited[neighbor] {
+				if dfs(neighbor) {
+					return true
+				}
+			} else if recStack[neighbor] {
+				return true
+			}
+		}
 
-        recStack[node] = false
-        return false
-    }
+		recStack[node] = false
+		return false
+	}
 
-    for node := range graph {
-        if !visited[node] {
-            if dfs(node) {
-                return true
-            }
-        }
-    }
+	for node := range graph {
+		if !visited[node] {
+			if dfs(node) {
+				return true
+			}
+		}
+	}
 
-    return false
+	return false
 }
 
 func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-    var entry struct {
-        ParentTagID int `json:"parent_tag_id"`
-        ChildTagID  int `json:"child_tag_id"`
-    }
-    err := json.NewDecoder(r.Body).Decode(&entry)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var entry struct {
+		ParentTagID int `json:"parent_tag_id"`
+		ChildTagID  int `json:"child_tag_id"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&entry)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Start a transaction
-    tx, err := db.Begin()
-    if err != nil {
-        log.Printf("Error starting transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer tx.Rollback()
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
 
-    // Fetch all existing hierarchies
-    rows, err := tx.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
-    if err != nil {
-        log.Printf("Error fetching tag hierarchies: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	// Fetch all existing hierarchies
+	rows, err := tx.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
+	if err != nil {
+		log.Printf("Error fetching tag hierarchies: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
 
-    var parents, children []int
-    for rows.Next() {
-        var parent, child int
-        if err := rows.Scan(&parent, &child); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
-        parents = append(parents, parent)
-        children = append(children, child)
-    }
+	var parents, children []int
+	for rows.Next() {
+		var parent, child int
+		if err := rows.Scan(&parent, &child); err != nil {
+			log.Printf("Error scanning row: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		parents = append(parents, parent)
+		children = append(children, child)
+	}
 
-    // Add the new relationship to check
-    parents = append(parents, entry.ParentTagID)
-    children = append(children, entry.ChildTagID)
+	// Add the new relationship to check
+	parents = append(parents, entry.ParentTagID)
+	children = append(children, entry.ChildTagID)
 
-    // Check for cycles
-    if detectCycle(parents, children) {
-        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
-        return
-    }
+	// Check for cycles
+	if detectCycle(parents, children) {
+		http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+		return
+	}
 
-    // Insert the new entry
-    _, err = tx.Exec(`
+	// Insert the new entry
+	_, err = tx.Exec(`
         INSERT INTO tag_hierarchy (parent_tag_id, child_tag_id)
         VALUES ($1, $2)
     `, entry.ParentTagID, entry.ChildTagID)
 
-    if err != nil {
-        log.Printf("Error inserting tag hierarchy entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		log.Printf("Error inserting tag hierarchy entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Commit the transaction
-    if err := tx.Commit(); err != nil {
-        log.Printf("Error committing transaction: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry added successfully"})
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry added successfully"})
 }
