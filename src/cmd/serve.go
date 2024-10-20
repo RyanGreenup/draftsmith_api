@@ -154,7 +154,6 @@ type NewCategory struct {
 // NoteHierarchyEntry represents the structure for adding a hierarchy entry
 type NoteHierarchyEntry struct {
 	ParentNoteID  int    `json:"parent_note_id"`
-	ChildNoteID   int    `json:"child_note_id"`
 	HierarchyType string `json:"hierarchy_type"`
 }
 
@@ -218,6 +217,7 @@ func serve() {
 	r.HandleFunc("/tags/{id}", updateTag).Methods("PUT")
 	r.HandleFunc("/tags/hierarchy/{childId}", deleteTagHierarchyEntry).Methods("DELETE")
 	r.HandleFunc("/notes/hierarchy/{childId}", deleteNoteHierarchyEntry).Methods("DELETE")
+	r.HandleFunc("/notes/hierarchy/{childId}", updateNoteHierarchyEntry).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -878,4 +878,50 @@ func deleteNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry deleted successfully"})
+}
+
+func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    childNoteID := vars["childId"]
+
+    var entry NoteHierarchyEntry
+    err := json.NewDecoder(r.Body).Decode(&entry)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate hierarchy_type
+    if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
+        http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
+        return
+    }
+
+    // Update the existing entry
+    result, err := db.Exec(`
+        UPDATE note_hierarchy 
+        SET parent_note_id = $1, hierarchy_type = $2
+        WHERE child_note_id = $3
+    `, entry.ParentNoteID, entry.HierarchyType, childNoteID)
+
+    if err != nil {
+        log.Printf("Error updating note hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Note hierarchy entry not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry updated successfully"})
 }
