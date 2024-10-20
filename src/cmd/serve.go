@@ -26,8 +26,8 @@ type Note struct {
 
 // NoteUpdate represents the structure for updating a note
 type NoteUpdate struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	Title   *string `json:"title,omitempty"`
+	Content *string `json:"content,omitempty"`
 }
 
 // NewNote represents the structure for creating a new note
@@ -263,11 +263,43 @@ func updateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.Exec("UPDATE notes SET title = $1, content = $2, modified_at = CURRENT_TIMESTAMP WHERE id = $3",
-		update.Title, update.Content, id)
+	// Start building the SQL query
+	query := "UPDATE notes SET modified_at = CURRENT_TIMESTAMP"
+	var args []interface{}
+	var argIndex int = 1
+
+	if update.Title != nil {
+		query += fmt.Sprintf(", title = $%d", argIndex)
+		args = append(args, *update.Title)
+		argIndex++
+	}
+
+	if update.Content != nil {
+		query += fmt.Sprintf(", content = $%d", argIndex)
+		args = append(args, *update.Content)
+		argIndex++
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d", argIndex)
+	args = append(args, id)
+
+	// Execute the query
+	result, err := db.Exec(query, args...)
 	if err != nil {
 		log.Printf("Error updating note: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected == 0 {
+		http.Error(w, "Note not found", http.StatusNotFound)
 		return
 	}
 
