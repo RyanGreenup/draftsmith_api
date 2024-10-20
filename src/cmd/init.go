@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 
+    utils "draftsmith/src/utils"
 	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,21 +30,23 @@ This requires the database to be dropped first, use the drop command to do this.
 
 		DB_NAME := "draftsmith"
 
-		// Get database connection details from viper
-		dbHost := viper.GetString("db_host")
-		dbPort := viper.GetInt("db_port")
-		dbUser := viper.GetString("db_user")
-		dbPass := viper.GetString("db_pass")
-
-		// Connect to the default postgres database
-		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			dbHost, dbPort, dbUser, dbPass, "postgres")
-
-		// Open database connection
-		db, err := sql.Open("postgres", connStr)
-		if err != nil {
-			log.Fatalf("Error opening database connection: %v", err)
-		}
+		// // Get database connection details from viper
+		// dbHost := viper.GetString("db_host")
+		// dbPort := viper.GetInt("db_port")
+		// dbUser := viper.GetString("db_user")
+		// dbPass := viper.GetString("db_pass")
+		//
+		// // Connect to the default postgres database
+		// connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		// 	dbHost, dbPort, dbUser, dbPass, "postgres")
+		//
+		// // Open database connection
+		// db, err := sql.Open("postgres", connStr)
+		// if err != nil {
+		// 	log.Fatalf("Error opening database connection: %v", err)
+		// }
+        utils.Get_db()
+        db := utils.get_db()
 		defer db.Close()
 
 		// Create the database
