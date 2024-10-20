@@ -87,6 +87,54 @@ type TagWithNotes struct {
 	Notes []NoteInfo `json:"notes"`
 }
 
+func searchNotes(w http.ResponseWriter, r *http.Request) {
+    query := r.URL.Query().Get("q")
+    if query == "" {
+        http.Error(w, "Query parameter 'q' is required", http.StatusBadRequest)
+        return
+    }
+
+    rows, err := db.Query(`
+        SELECT id, title
+        FROM notes
+        WHERE to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', $1)
+        ORDER BY ts_rank(to_tsvector('english', title || ' ' || content), plainto_tsquery('english', $1)) DESC
+    `, query)
+    if err != nil {
+        log.Printf("Error querying database: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var notes []struct {
+        ID    int    `json:"id"`
+        Title string `json:"title"`
+    }
+
+    for rows.Next() {
+        var note struct {
+            ID    int    `json:"id"`
+            Title string `json:"title"`
+        }
+        if err := rows.Scan(&note.ID, &note.Title); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        notes = append(notes, note)
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error after scanning rows: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(notes)
+}
+
 // Category represents a category structure
 type Category struct {
 	ID   int    `json:"id"`
@@ -161,6 +209,7 @@ func serve() {
 	r.HandleFunc("/notes/tree", getNoteTree).Methods("GET")
 	r.HandleFunc("/tags/with-notes", getTagsWithNotes).Methods("GET")
 	r.HandleFunc("/notes/no-content", getNoteTitlesAndIDs).Methods("GET")
+	r.HandleFunc("/notes/search", searchNotes).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
