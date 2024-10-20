@@ -93,6 +93,18 @@ type UpdateTagRequest struct {
     Name string `json:"name"`
 }
 
+// NewTask represents the structure for creating a new task
+type NewTask struct {
+    NoteID           int     `json:"note_id"`
+    Status           string  `json:"status"`
+    EffortEstimate   float64 `json:"effort_estimate"`
+    ActualEffort     float64 `json:"actual_effort"`
+    Deadline         string  `json:"deadline"`
+    Priority         int     `json:"priority"`
+    AllDay           bool    `json:"all_day"`
+    GoalRelationship int     `json:"goal_relationship"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
     query := r.URL.Query().Get("q")
     if query == "" {
@@ -223,6 +235,7 @@ func serve() {
 	r.HandleFunc("/notes/hierarchy/{childId}", deleteNoteHierarchyEntry).Methods("DELETE")
 	r.HandleFunc("/notes/hierarchy/{childId}", updateNoteHierarchyEntry).Methods("PUT")
 	r.HandleFunc("/tags/hierarchy/{childId}", updateTagHierarchyEntry).Methods("PUT")
+	r.HandleFunc("/tasks", createTask).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1093,6 +1106,63 @@ func updateTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry updated successfully"})
+}
+
+func createTask(w http.ResponseWriter, r *http.Request) {
+    var newTask NewTask
+    err := json.NewDecoder(r.Body).Decode(&newTask)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the status
+    validStatuses := []string{"todo", "done", "wait", "hold", "idea", "kill", "proj", "event"}
+    if !contains(validStatuses, newTask.Status) {
+        http.Error(w, "Invalid status", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the priority
+    if newTask.Priority < 1 || newTask.Priority > 5 {
+        http.Error(w, "Priority must be between 1 and 5", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the goal relationship
+    if newTask.GoalRelationship < 1 || newTask.GoalRelationship > 5 {
+        http.Error(w, "Goal relationship must be between 1 and 5", http.StatusBadRequest)
+        return
+    }
+
+    var taskID int
+    err = db.QueryRow(`
+        INSERT INTO tasks (note_id, status, effort_estimate, actual_effort, deadline, priority, all_day, goal_relationship)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+    `, newTask.NoteID, newTask.Status, newTask.EffortEstimate, newTask.ActualEffort, newTask.Deadline, newTask.Priority, newTask.AllDay, newTask.GoalRelationship).Scan(&taskID)
+
+    if err != nil {
+        log.Printf("Error creating task: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Task created successfully",
+        "id":      taskID,
+    })
+}
+
+// Helper function to check if a string is in a slice
+func contains(slice []string, item string) bool {
+    for _, s := range slice {
+        if s == item {
+            return true
+        }
+    }
+    return false
 }
 
 func deleteTag(w http.ResponseWriter, r *http.Request) {
