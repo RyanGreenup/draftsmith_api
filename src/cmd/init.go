@@ -34,14 +34,44 @@ This requires the database to be dropped first, use the drop command to do this.
 		dbPass := viper.GetString("db_pass")
 		dbName := viper.GetString("db_name")
 
-		// Create connection string
-		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			dbHost, dbPort, dbUser, dbPass, dbName)
+		// Create connection string for the default 'postgres' database
+		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=postgres sslmode=disable",
+			dbHost, dbPort, dbUser, dbPass)
 
 		fmt.Printf("Debug: Connection string: %s\n", connStr)
 
-		// Open database connection
+		// Open connection to the default 'postgres' database
 		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+			log.Fatalf("Error opening database connection: %v", err)
+		}
+		defer db.Close()
+
+		// Check if the database exists
+		var exists bool
+		err = db.QueryRow("SELECT EXISTS(SELECT datname FROM pg_catalog.pg_database WHERE datname = $1)", dbName).Scan(&exists)
+		if err != nil {
+			log.Fatalf("Error checking if database exists: %v", err)
+		}
+
+		// If the database doesn't exist, create it
+		if !exists {
+			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+			if err != nil {
+				log.Fatalf("Error creating database: %v", err)
+			}
+			fmt.Printf("Database '%s' created.\n", dbName)
+		}
+
+		// Close the connection to the 'postgres' database
+		db.Close()
+
+		// Create a new connection string for the 'draftsmith' database
+		connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+			dbHost, dbPort, dbUser, dbPass, dbName)
+
+		// Open connection to the 'draftsmith' database
+		db, err = sql.Open("postgres", connStr)
 		if err != nil {
 			log.Fatalf("Error opening database connection: %v", err)
 		}
