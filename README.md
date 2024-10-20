@@ -27,6 +27,20 @@ It is designed to be a simple, fast, and reliable way to take notes, whilst rema
 
 The binary is embedded in the docker container, which automatically starts the server on port `37238` [^1729388462]
 
+## Development
+
+Use [PostgreSQL-Browser for Browsing the Database](https://github.com/RyanGreenup/PostgreSQL-Browser).
+
+Create the database:
+
+```sh
+PGPASSWORD=postgres \
+    psql -h localhost -p 5432 -U postgres -f ./src/cmd/draftsmith.sql
+pg_browser postgres  --host localhost --password postgres --username postgres --port 5432
+```
+
+
+
 
 ## Footnotes
 
