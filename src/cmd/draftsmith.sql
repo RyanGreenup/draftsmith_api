@@ -145,8 +145,7 @@ CREATE TABLE task_schedules (
 );
 
 
--- Clock Table
-
+-- Clock Table (consider generalizing this so that notes can have clock tables too)
 CREATE TABLE task_clocks (
     id SERIAL PRIMARY KEY,                 -- Unique clock identifier
     task_id INT REFERENCES tasks(id) ON DELETE CASCADE, -- Link to tasks
