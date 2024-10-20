@@ -236,6 +236,7 @@ func serve() {
 	r.HandleFunc("/notes/hierarchy/{childId}", updateNoteHierarchyEntry).Methods("PUT")
 	r.HandleFunc("/tags/hierarchy/{childId}", updateTagHierarchyEntry).Methods("PUT")
 	r.HandleFunc("/tasks", createTask).Methods("POST")
+	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1153,6 +1154,105 @@ func createTask(w http.ResponseWriter, r *http.Request) {
         "message": "Task created successfully",
         "id":      taskID,
     })
+}
+
+func updateTask(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    taskID := vars["id"]
+
+    var update UpdateTask
+    err := json.NewDecoder(r.Body).Decode(&update)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Start building the SQL query
+    query := "UPDATE tasks SET modified_at = CURRENT_TIMESTAMP"
+    var args []interface{}
+    var argIndex int = 1
+
+    // Validate and add fields to update
+    if update.Status != nil {
+        validStatuses := []string{"todo", "done", "wait", "hold", "idea", "kill", "proj", "event"}
+        if !contains(validStatuses, *update.Status) {
+            http.Error(w, "Invalid status", http.StatusBadRequest)
+            return
+        }
+        query += fmt.Sprintf(", status = $%d", argIndex)
+        args = append(args, *update.Status)
+        argIndex++
+    }
+
+    if update.EffortEstimate != nil {
+        query += fmt.Sprintf(", effort_estimate = $%d", argIndex)
+        args = append(args, *update.EffortEstimate)
+        argIndex++
+    }
+
+    if update.ActualEffort != nil {
+        query += fmt.Sprintf(", actual_effort = $%d", argIndex)
+        args = append(args, *update.ActualEffort)
+        argIndex++
+    }
+
+    if update.Deadline != nil {
+        query += fmt.Sprintf(", deadline = $%d", argIndex)
+        args = append(args, *update.Deadline)
+        argIndex++
+    }
+
+    if update.Priority != nil {
+        if *update.Priority < 1 || *update.Priority > 5 {
+            http.Error(w, "Priority must be between 1 and 5", http.StatusBadRequest)
+            return
+        }
+        query += fmt.Sprintf(", priority = $%d", argIndex)
+        args = append(args, *update.Priority)
+        argIndex++
+    }
+
+    if update.AllDay != nil {
+        query += fmt.Sprintf(", all_day = $%d", argIndex)
+        args = append(args, *update.AllDay)
+        argIndex++
+    }
+
+    if update.GoalRelationship != nil {
+        if *update.GoalRelationship < 1 || *update.GoalRelationship > 5 {
+            http.Error(w, "Goal relationship must be between 1 and 5", http.StatusBadRequest)
+            return
+        }
+        query += fmt.Sprintf(", goal_relationship = $%d", argIndex)
+        args = append(args, *update.GoalRelationship)
+        argIndex++
+    }
+
+    query += fmt.Sprintf(" WHERE id = $%d", argIndex)
+    args = append(args, taskID)
+
+    // Execute the query
+    result, err := db.Exec(query, args...)
+    if err != nil {
+        log.Printf("Error updating task: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Task not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Task updated successfully"})
 }
 
 // Helper function to check if a string is in a slice
