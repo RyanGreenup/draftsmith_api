@@ -167,6 +167,11 @@ type UpdateTaskClock struct {
     ClockOut string `json:"clock_out,omitempty"`
 }
 
+type TaskTreeNode struct {
+    Task     TaskWithDetails `json:"task"`
+    Children []*TaskTreeNode `json:"children,omitempty"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
@@ -307,6 +312,7 @@ func serve() {
 	r.HandleFunc("/task_schedules/{id}", deleteTaskSchedule).Methods("DELETE")
 	r.HandleFunc("/task_clocks/{id}", deleteTaskClock).Methods("DELETE")
 	r.HandleFunc("/task_clocks/{id}", updateTaskClock).Methods("PUT")
+	r.HandleFunc("/tasks/tree", getTasksWithDetailsAsTree).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1711,6 +1717,151 @@ func updateTaskClock(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry updated successfully"})
+}
+
+func getTasksWithDetailsAsTree(w http.ResponseWriter, r *http.Request) {
+    // Get the flat list of tasks
+    tasks := getTasksWithDetailsAsList()
+
+    // Create a map of tasks by note ID for easy lookup
+    taskMap := make(map[int]*TaskTreeNode)
+    for _, task := range tasks {
+        taskMap[task.NoteID] = &TaskTreeNode{Task: task}
+    }
+
+    // Query to get the note hierarchy
+    rows, err := db.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
+    if err != nil {
+        log.Printf("Error querying note hierarchy: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    // Build the tree structure
+    var rootTasks []*TaskTreeNode
+    for rows.Next() {
+        var parentNoteID, childNoteID int
+        if err := rows.Scan(&parentNoteID, &childNoteID); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+
+        childNode, childExists := taskMap[childNoteID]
+        if !childExists {
+            continue // Skip if the child note is not a task
+        }
+
+        parentNode, parentExists := taskMap[parentNoteID]
+        if parentExists {
+            parentNode.Children = append(parentNode.Children, childNode)
+        } else {
+            rootTasks = append(rootTasks, childNode)
+        }
+    }
+
+    // Add any tasks that are not in the hierarchy to the root level
+    for _, task := range taskMap {
+        isChild := false
+        for _, rootTask := range rootTasks {
+            if isDescendant(rootTask, task) {
+                isChild = true
+                break
+            }
+        }
+        if !isChild {
+            rootTasks = append(rootTasks, task)
+        }
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(rootTasks)
+}
+
+func getTasksWithDetailsAsList() []TaskWithDetails {
+    query := `
+        SELECT
+            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort,
+            t.deadline, t.priority, t.all_day, t.goal_relationship,
+            t.created_at, t.modified_at,
+            ts.id, ts.start_datetime, ts.end_datetime,
+            tc.id, tc.clock_in, tc.clock_out
+        FROM tasks t
+        LEFT JOIN task_schedules ts ON t.id = ts.task_id
+        LEFT JOIN task_clocks tc ON t.id = tc.task_id
+        ORDER BY t.id, ts.id, tc.id
+    `
+
+    rows, err := db.Query(query)
+    if err != nil {
+        log.Printf("Error querying tasks: %v", err)
+        return nil
+    }
+    defer rows.Close()
+
+    tasksMap := make(map[int]*TaskWithDetails)
+
+    for rows.Next() {
+        var task TaskWithDetails
+        var schedule TaskSchedule
+        var clock TaskClock
+        var scheduleID, clockID sql.NullInt64
+        var startDatetime, endDatetime, clockIn, clockOut sql.NullString
+
+        err := rows.Scan(
+            &task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
+            &task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
+            &task.CreatedAt, &task.ModifiedAt,
+            &scheduleID, &startDatetime, &endDatetime,
+            &clockID, &clockIn, &clockOut,
+        )
+        if err != nil {
+            log.Printf("Error scanning row: %v", err)
+            return nil
+        }
+
+        if existingTask, ok := tasksMap[task.ID]; ok {
+            task = *existingTask
+        } else {
+            tasksMap[task.ID] = &task
+        }
+
+        if scheduleID.Valid {
+            schedule.ID = int(scheduleID.Int64)
+            schedule.StartDatetime = startDatetime.String
+            schedule.EndDatetime = endDatetime.String
+            task.Schedules = append(task.Schedules, schedule)
+        }
+
+        if clockID.Valid {
+            clock.ID = int(clockID.Int64)
+            clock.ClockIn = clockIn.String
+            clock.ClockOut = clockOut.String
+            task.Clocks = append(task.Clocks, clock)
+        }
+
+        tasksMap[task.ID] = &task
+    }
+
+    tasks := make([]TaskWithDetails, 0, len(tasksMap))
+    for _, task := range tasksMap {
+        tasks = append(tasks, *task)
+    }
+
+    return tasks
+}
+
+func isDescendant(root *TaskTreeNode, node *TaskTreeNode) bool {
+    if root == node {
+        return true
+    }
+    for _, child := range root.Children {
+        if isDescendant(child, node) {
+            return true
+        }
+    }
+    return false
 }
 
 // Helper function to check if a string is in a slice
