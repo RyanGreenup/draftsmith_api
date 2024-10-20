@@ -116,6 +116,34 @@ type UpdateTask struct {
     GoalRelationship *int     `json:"goal_relationship,omitempty"`
 }
 
+type TaskWithDetails struct {
+    ID               int             `json:"id"`
+    NoteID           int             `json:"note_id"`
+    Status           string          `json:"status"`
+    EffortEstimate   float64         `json:"effort_estimate"`
+    ActualEffort     float64         `json:"actual_effort"`
+    Deadline         string          `json:"deadline"`
+    Priority         int             `json:"priority"`
+    AllDay           bool            `json:"all_day"`
+    GoalRelationship int             `json:"goal_relationship"`
+    CreatedAt        string          `json:"created_at"`
+    ModifiedAt       string          `json:"modified_at"`
+    Schedules        []TaskSchedule  `json:"schedules"`
+    Clocks           []TaskClock     `json:"clocks"`
+}
+
+type TaskSchedule struct {
+    ID            int    `json:"id"`
+    StartDatetime string `json:"start_datetime"`
+    EndDatetime   string `json:"end_datetime"`
+}
+
+type TaskClock struct {
+    ID       int    `json:"id"`
+    ClockIn  string `json:"clock_in"`
+    ClockOut string `json:"clock_out"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
     query := r.URL.Query().Get("q")
     if query == "" {
@@ -249,6 +277,7 @@ func serve() {
 	r.HandleFunc("/tasks", createTask).Methods("POST")
 	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
 	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
+	r.HandleFunc("/tasks/details", getTasksWithDetails).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1309,6 +1338,89 @@ func deleteTask(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Task deleted successfully"})
+}
+
+func getTasksWithDetails(w http.ResponseWriter, r *http.Request) {
+    // Query to get tasks with their schedules and clocks
+    query := `
+        SELECT 
+            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort, 
+            t.deadline, t.priority, t.all_day, t.goal_relationship, 
+            t.created_at, t.modified_at,
+            ts.id, ts.start_datetime, ts.end_datetime,
+            tc.id, tc.clock_in, tc.clock_out
+        FROM tasks t
+        LEFT JOIN task_schedules ts ON t.id = ts.task_id
+        LEFT JOIN task_clocks tc ON t.id = tc.task_id
+        ORDER BY t.id, ts.id, tc.id
+    `
+
+    rows, err := db.Query(query)
+    if err != nil {
+        log.Printf("Error querying tasks: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    tasksMap := make(map[int]*TaskWithDetails)
+
+    for rows.Next() {
+        var task TaskWithDetails
+        var schedule TaskSchedule
+        var clock TaskClock
+        var scheduleID, clockID sql.NullInt64
+        var startDatetime, endDatetime, clockIn, clockOut sql.NullString
+
+        err := rows.Scan(
+            &task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
+            &task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
+            &task.CreatedAt, &task.ModifiedAt,
+            &scheduleID, &startDatetime, &endDatetime,
+            &clockID, &clockIn, &clockOut,
+        )
+        if err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+
+        if existingTask, ok := tasksMap[task.ID]; ok {
+            task = *existingTask
+        } else {
+            tasksMap[task.ID] = &task
+        }
+
+        if scheduleID.Valid {
+            schedule.ID = int(scheduleID.Int64)
+            schedule.StartDatetime = startDatetime.String
+            schedule.EndDatetime = endDatetime.String
+            task.Schedules = append(task.Schedules, schedule)
+        }
+
+        if clockID.Valid {
+            clock.ID = int(clockID.Int64)
+            clock.ClockIn = clockIn.String
+            clock.ClockOut = clockOut.String
+            task.Clocks = append(task.Clocks, clock)
+        }
+
+        tasksMap[task.ID] = &task
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error after scanning rows: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    tasks := make([]*TaskWithDetails, 0, len(tasksMap))
+    for _, task := range tasksMap {
+        tasks = append(tasks, task)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(tasks)
 }
 
 // Helper function to check if a string is in a slice
