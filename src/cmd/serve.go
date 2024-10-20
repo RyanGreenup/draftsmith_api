@@ -220,6 +220,7 @@ func serve() {
 	r.HandleFunc("/tags/hierarchy/{childId}", deleteTagHierarchyEntry).Methods("DELETE")
 	r.HandleFunc("/notes/hierarchy/{childId}", deleteNoteHierarchyEntry).Methods("DELETE")
 	r.HandleFunc("/notes/hierarchy/{childId}", updateNoteHierarchyEntry).Methods("PUT")
+	r.HandleFunc("/tags/hierarchy/{childId}", updateTagHierarchyEntry).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -980,6 +981,101 @@ func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry updated successfully"})
 }
+
+func updateTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    childTagID := vars["childId"]
+
+    var entry struct {
+        ParentTagID int `json:"parent_tag_id"`
+    }
+    err := json.NewDecoder(r.Body).Decode(&entry)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Fetch all existing hierarchies
+    rows, err := tx.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
+    if err != nil {
+        log.Printf("Error fetching tag hierarchies: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var parents, children []int
+    for rows.Next() {
+        var parent, child int
+        if err := rows.Scan(&parent, &child); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        parents = append(parents, parent)
+        children = append(children, child)
+    }
+
+    // Add the new relationship to check
+    childID, err := strconv.Atoi(childTagID)
+    if err != nil {
+        http.Error(w, "Invalid child tag ID", http.StatusBadRequest)
+        return
+    }
+    parents = append(parents, entry.ParentTagID)
+    children = append(children, childID)
+
+    // Check for cycles
+    if detectCycle(parents, children) {
+        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+        return
+    }
+
+    // Update the existing entry
+    result, err := tx.Exec(`
+        UPDATE tag_hierarchy 
+        SET parent_tag_id = $1
+        WHERE child_tag_id = $2
+    `, entry.ParentTagID, childTagID)
+
+    if err != nil {
+        log.Printf("Error updating tag hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Tag hierarchy entry not found", http.StatusNotFound)
+        return
+    }
+
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry updated successfully"})
+}
+
 func detectCycle(parents, children []int) bool {
     graph := make(map[int][]int)
     for i := range parents {
