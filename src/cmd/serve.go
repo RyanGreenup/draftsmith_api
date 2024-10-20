@@ -217,6 +217,7 @@ func serve() {
 	r.HandleFunc("/notes/search", searchNotes).Methods("GET")
 	r.HandleFunc("/tags/{id}", updateTag).Methods("PUT")
 	r.HandleFunc("/tags/hierarchy/{childId}", deleteTagHierarchyEntry).Methods("DELETE")
+	r.HandleFunc("/notes/hierarchy/{childId}", deleteNoteHierarchyEntry).Methods("DELETE")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -849,4 +850,32 @@ func deleteTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry deleted successfully"})
+}
+
+func deleteNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    childNoteID := vars["childId"]
+
+    // Execute the delete query
+    result, err := db.Exec("DELETE FROM note_hierarchy WHERE child_note_id = $1", childNoteID)
+    if err != nil {
+        log.Printf("Error deleting note hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Note hierarchy entry not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Note hierarchy entry deleted successfully"})
 }
