@@ -16,13 +16,6 @@ CREATE TABLE notes (
     fts tsvector GENERATED ALWAYS AS (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(content,''))) STORED
 );
 
--- Trigger to update the full-text search vector
-CREATE TRIGGER notes_fts_update
-BEFORE INSERT OR UPDATE ON notes
-FOR EACH ROW EXECUTE PROCEDURE tsvector_update_trigger(
-    fts, 'pg_catalog.english', title, content
-);
-
 -- Table to store modified dates
 CREATE TABLE note_modifications (
     note_id INT REFERENCES notes(id),
