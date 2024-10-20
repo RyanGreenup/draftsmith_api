@@ -63,6 +63,13 @@ type NewCategory struct {
     Name string `json:"name"`
 }
 
+// NoteHierarchyEntry represents the structure for adding a hierarchy entry
+type NoteHierarchyEntry struct {
+    ParentNoteID  int    `json:"parent_note_id"`
+    ChildNoteID   int    `json:"child_note_id"`
+    HierarchyType string `json:"hierarchy_type"`
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -113,6 +120,7 @@ func serve() {
 	r.HandleFunc("/notes/{id}/tags", addTagToNote).Methods("POST")
 	r.HandleFunc("/categories", listCategories).Methods("GET")
 	r.HandleFunc("/categories", createCategory).Methods("POST")
+	r.HandleFunc("/notes/hierarchy", addNoteHierarchyEntry).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -193,6 +201,41 @@ func createNote(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]interface{}{
         "message": "Note created successfully",
         "id":      noteID,
+    })
+}
+
+func addNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
+    var entry NoteHierarchyEntry
+    err := json.NewDecoder(r.Body).Decode(&entry)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate hierarchy_type
+    if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
+        http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new hierarchy entry
+    var entryID int
+    err = db.QueryRow(`
+        INSERT INTO note_hierarchy (parent_note_id, child_note_id, hierarchy_type)
+        VALUES ($1, $2, $3)
+        RETURNING id
+    `, entry.ParentNoteID, entry.ChildNoteID, entry.HierarchyType).Scan(&entryID)
+
+    if err != nil {
+        log.Printf("Error adding note hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Note hierarchy entry added successfully",
+        "id":      entryID,
     })
 }
 
