@@ -27,6 +27,12 @@ type NoteUpdate struct {
     Content string `json:"content"`
 }
 
+// NewNote represents the structure for creating a new note
+type NewNote struct {
+    Title   string `json:"title"`
+    Content string `json:"content"`
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -71,6 +77,7 @@ func serve() {
 	r := mux.NewRouter()
 	r.HandleFunc("/titles", getNoteTitles).Methods("GET")
 	r.HandleFunc("/notes/{id}", updateNote).Methods("PUT")
+	r.HandleFunc("/notes", createNote).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -128,4 +135,28 @@ func updateNote(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Note updated successfully"})
+}
+
+func createNote(w http.ResponseWriter, r *http.Request) {
+    var newNote NewNote
+    err := json.NewDecoder(r.Body).Decode(&newNote)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    var noteID int
+    err = db.QueryRow("INSERT INTO notes (title, content) VALUES ($1, $2) RETURNING id",
+        newNote.Title, newNote.Content).Scan(&noteID)
+    if err != nil {
+        log.Printf("Error creating note: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Note created successfully",
+        "id":      noteID,
+    })
 }
