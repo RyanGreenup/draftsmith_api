@@ -35,7 +35,7 @@ This requires the database to be dropped first, use the drop command to do this.
 		dbName := viper.GetString("db_name")
 
 		// Create connection string
-		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable",
 			dbHost, dbPort, dbUser, dbPass, dbName)
 
 		// Open database connection
@@ -62,7 +62,7 @@ func init() {
 	initCmd.Flags().String("db_host", "localhost", "Database host")
 	initCmd.Flags().Int("db_port", 5432, "Database port")
 	initCmd.Flags().String("db_user", "postgres", "Database user")
-	initCmd.Flags().String("db_pass", "", "Database password")
+	initCmd.Flags().String("db_pass", "postgres", "Database password")
 	initCmd.Flags().String("db_name", "draftsmith", "Database name")
 
 	// Bind flags to viper
