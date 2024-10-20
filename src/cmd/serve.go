@@ -248,6 +248,7 @@ func serve() {
 	r.HandleFunc("/tags/hierarchy/{childId}", updateTagHierarchyEntry).Methods("PUT")
 	r.HandleFunc("/tasks", createTask).Methods("POST")
 	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
+	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1264,6 +1265,50 @@ func updateTask(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Task updated successfully"})
+}
+
+func deleteTask(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    taskID := vars["id"]
+
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Delete the task
+    result, err := tx.Exec("DELETE FROM tasks WHERE id = $1", taskID)
+    if err != nil {
+        log.Printf("Error deleting task: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Task not found", http.StatusNotFound)
+        return
+    }
+
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Task deleted successfully"})
 }
 
 // Helper function to check if a string is in a slice
