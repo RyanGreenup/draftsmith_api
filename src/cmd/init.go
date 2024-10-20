@@ -8,6 +8,7 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
@@ -81,10 +82,16 @@ This requires the database to be dropped first, use the drop command to do this.
 		fmt.Println("Debug: SQL commands:")
 		fmt.Println(sql_commands)
 
-		// Execute SQL commands
-		_, err = db.Exec(sql_commands)
-		if err != nil {
-			log.Fatalf("Error executing SQL commands: %v", err)
+		// Split SQL commands and execute them separately
+		commands := strings.Split(sql_commands, ";")
+		for _, command := range commands {
+			trimmedCommand := strings.TrimSpace(command)
+			if trimmedCommand != "" {
+				_, err = db.Exec(trimmedCommand)
+				if err != nil {
+					log.Fatalf("Error executing SQL command: %v\nCommand: %s", err, trimmedCommand)
+				}
+			}
 		}
 
 		fmt.Println("Database initialized successfully.")
