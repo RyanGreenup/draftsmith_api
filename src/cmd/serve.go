@@ -430,39 +430,85 @@ func getTagTree(w http.ResponseWriter, r *http.Request) {
 }
 
 func addNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
-	var entry NoteHierarchyEntry
-	err := json.NewDecoder(r.Body).Decode(&entry)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+    var entry NoteHierarchyEntry
+    err := json.NewDecoder(r.Body).Decode(&entry)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
 
-	// Validate hierarchy_type
-    // TODO is this necessary if the DB will handle it?
-	if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
-		http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
-		return
-	}
+    // Validate hierarchy_type
+    if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
+        http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
+        return
+    }
 
-	// Insert the new hierarchy entry
-	var entryID int
-	err = db.QueryRow(`
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Fetch all existing hierarchies
+    rows, err := tx.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
+    if err != nil {
+        log.Printf("Error fetching note hierarchies: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var parents, children []int
+    for rows.Next() {
+        var parent, child int
+        if err := rows.Scan(&parent, &child); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        parents = append(parents, parent)
+        children = append(children, child)
+    }
+
+    // Add the new relationship to check
+    parents = append(parents, entry.ParentNoteID)
+    children = append(children, entry.ChildNoteID)
+
+    // Check for cycles
+    if detectCycle(parents, children) {
+        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new hierarchy entry
+    var entryID int
+    err = tx.QueryRow(`
         INSERT INTO note_hierarchy (parent_note_id, child_note_id, hierarchy_type)
         VALUES ($1, $2, $3)
         RETURNING id
     `, entry.ParentNoteID, entry.ChildNoteID, entry.HierarchyType).Scan(&entryID)
 
-	if err != nil {
-		log.Printf("Error adding note hierarchy entry: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        log.Printf("Error adding note hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "Note hierarchy entry added successfully",
-		"id":      entryID,
-	})
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Note hierarchy entry added successfully",
+        "id":      entryID,
+    })
 }
 
 func listTags(w http.ResponseWriter, r *http.Request) {
