@@ -299,6 +299,7 @@ func serve() {
 	r.HandleFunc("/task_schedules", createTaskSchedule).Methods("POST")
 	r.HandleFunc("/task_clocks", createTaskClock).Methods("POST")
 	r.HandleFunc("/task_schedules/{id}", updateTaskSchedule).Methods("PUT")
+	r.HandleFunc("/task_schedules/{id}", deleteTaskSchedule).Methods("DELETE")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1588,6 +1589,34 @@ func updateTaskSchedule(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule updated successfully"})
+}
+
+func deleteTaskSchedule(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    scheduleID := vars["id"]
+
+    // Execute the delete query
+    result, err := db.Exec("DELETE FROM task_schedules WHERE id = $1", scheduleID)
+    if err != nil {
+        log.Printf("Error deleting task schedule: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Task schedule not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule deleted successfully"})
 }
 
 // Helper function to check if a string is in a slice
