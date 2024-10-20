@@ -300,6 +300,7 @@ func serve() {
 	r.HandleFunc("/task_clocks", createTaskClock).Methods("POST")
 	r.HandleFunc("/task_schedules/{id}", updateTaskSchedule).Methods("PUT")
 	r.HandleFunc("/task_schedules/{id}", deleteTaskSchedule).Methods("DELETE")
+	r.HandleFunc("/task_clocks/{id}", deleteTaskClock).Methods("DELETE")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1617,6 +1618,34 @@ func deleteTaskSchedule(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule deleted successfully"})
+}
+
+func deleteTaskClock(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    clockID := vars["id"]
+
+    // Execute the delete query
+    result, err := db.Exec("DELETE FROM task_clocks WHERE id = $1", clockID)
+    if err != nil {
+        log.Printf("Error deleting task clock entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Task clock entry not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry deleted successfully"})
 }
 
 // Helper function to check if a string is in a slice
