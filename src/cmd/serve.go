@@ -144,6 +144,12 @@ type TaskClock struct {
     ClockOut string `json:"clock_out"`
 }
 
+type NewTaskSchedule struct {
+    TaskID        int    `json:"task_id"`
+    StartDatetime string `json:"start_datetime"`
+    EndDatetime   string `json:"end_datetime"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
     query := r.URL.Query().Get("q")
     if query == "" {
@@ -278,6 +284,7 @@ func serve() {
 	r.HandleFunc("/tasks/{id}", updateTask).Methods("PUT")
 	r.HandleFunc("/tasks/{id}", deleteTask).Methods("DELETE")
 	r.HandleFunc("/tasks/details", getTasksWithDetails).Methods("GET")
+	r.HandleFunc("/task_schedules", createTaskSchedule).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1421,6 +1428,45 @@ func getTasksWithDetails(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(tasks)
+}
+
+func createTaskSchedule(w http.ResponseWriter, r *http.Request) {
+    var newSchedule NewTaskSchedule
+    err := json.NewDecoder(r.Body).Decode(&newSchedule)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Validate the input
+    if newSchedule.TaskID == 0 {
+        http.Error(w, "Task ID is required", http.StatusBadRequest)
+        return
+    }
+    if newSchedule.StartDatetime == "" || newSchedule.EndDatetime == "" {
+        http.Error(w, "Start and end datetimes are required", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new schedule
+    var scheduleID int
+    err = db.QueryRow(`
+        INSERT INTO task_schedules (task_id, start_datetime, end_datetime)
+        VALUES ($1, $2, $3)
+        RETURNING id
+    `, newSchedule.TaskID, newSchedule.StartDatetime, newSchedule.EndDatetime).Scan(&scheduleID)
+
+    if err != nil {
+        log.Printf("Error creating task schedule: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Task schedule created successfully",
+        "id":      scheduleID,
+    })
 }
 
 // Helper function to check if a string is in a slice
