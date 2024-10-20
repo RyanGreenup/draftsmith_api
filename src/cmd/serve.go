@@ -80,6 +80,13 @@ type NoteTree struct {
     Children []*NoteTree `json:"children,omitempty"`
 }
 
+// TagWithNotes represents a tag and its associated notes
+type TagWithNotes struct {
+    ID    int    `json:"tag_id"`
+    Name  string `json:"tag_name"`
+    Notes []NoteInfo `json:"notes"`
+}
+
 // Category represents a category structure
 type Category struct {
     ID   int    `json:"id"`
@@ -152,6 +159,7 @@ func serve() {
 	r.HandleFunc("/tags/hierarchy", addTagHierarchyEntry).Methods("POST")
 	r.HandleFunc("/tags/tree", getTagTree).Methods("GET")
 	r.HandleFunc("/notes/tree", getNoteTree).Methods("GET")
+	r.HandleFunc("/tags/with-notes", getTagsWithNotes).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -586,4 +594,60 @@ func getNoteTree(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(rootNotes)
+}
+
+func getTagsWithNotes(w http.ResponseWriter, r *http.Request) {
+    // Query to get tags and their associated notes
+    rows, err := db.Query(`
+        SELECT t.id, t.name, n.id, n.title
+        FROM tags t
+        LEFT JOIN note_tags nt ON t.id = nt.tag_id
+        LEFT JOIN notes n ON nt.note_id = n.id
+        ORDER BY t.name, n.title
+    `)
+    if err != nil {
+        log.Printf("Error querying tags and notes: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    tagsMap := make(map[int]*TagWithNotes)
+    for rows.Next() {
+        var tagID int
+        var tagName string
+        var noteID sql.NullInt64
+        var noteTitle sql.NullString
+
+        if err := rows.Scan(&tagID, &tagName, &noteID, &noteTitle); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+
+        tag, exists := tagsMap[tagID]
+        if !exists {
+            tag = &TagWithNotes{ID: tagID, Name: tagName}
+            tagsMap[tagID] = tag
+        }
+
+        if noteID.Valid {
+            tag.Notes = append(tag.Notes, NoteInfo{ID: int(noteID.Int64), Title: noteTitle.String})
+        }
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error after scanning rows: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Convert map to slice
+    var tagsWithNotes []TagWithNotes
+    for _, tag := range tagsMap {
+        tagsWithNotes = append(tagsWithNotes, *tag)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(tagsWithNotes)
 }
