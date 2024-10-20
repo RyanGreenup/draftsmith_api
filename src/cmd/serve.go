@@ -158,18 +158,18 @@ type NewTaskClock struct {
 }
 
 type UpdateTaskSchedule struct {
-    StartDatetime string `json:"start_datetime,omitempty"`
-    EndDatetime   string `json:"end_datetime,omitempty"`
+	StartDatetime string `json:"start_datetime,omitempty"`
+	EndDatetime   string `json:"end_datetime,omitempty"`
 }
 
 type UpdateTaskClock struct {
-    ClockIn  string `json:"clock_in,omitempty"`
-    ClockOut string `json:"clock_out,omitempty"`
+	ClockIn  string `json:"clock_in,omitempty"`
+	ClockOut string `json:"clock_out,omitempty"`
 }
 
 type TaskTreeNode struct {
-    Task     TaskWithDetails `json:"task"`
-    Children []*TaskTreeNode `json:"children,omitempty"`
+	Task     TaskWithDetails `json:"task"`
+	Children []*TaskTreeNode `json:"children,omitempty"`
 }
 
 func searchNotes(w http.ResponseWriter, r *http.Request) {
@@ -731,68 +731,11 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func getNoteTree(w http.ResponseWriter, r *http.Request) {
-	// First, get all notes
-	rows, err := db.Query("SELECT id, title FROM notes")
+	rootNotes, err := buildNoteTree(db)
 	if err != nil {
-		log.Printf("Error querying notes: %v", err)
+		log.Printf("Error building note tree: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-	defer rows.Close()
-
-	noteMap := make(map[int]*NoteTree)
-	for rows.Next() {
-		var id int
-		var title string
-		if err := rows.Scan(&id, &title); err != nil {
-			log.Printf("Error scanning note row: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		noteMap[id] = &NoteTree{ID: id, Title: title}
-	}
-
-	// Get the note hierarchy
-	rows, err = db.Query("SELECT parent_note_id, child_note_id, hierarchy_type FROM note_hierarchy")
-	if err != nil {
-		log.Printf("Error querying note hierarchy: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var parentID, childID int
-		var hierarchyType string
-		if err := rows.Scan(&parentID, &childID, &hierarchyType); err != nil {
-			log.Printf("Error scanning note hierarchy row: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		parent := noteMap[parentID]
-		child := noteMap[childID]
-		child.Type = hierarchyType
-		parent.Children = append(parent.Children, child)
-	}
-
-	// Find root notes (notes without parents)
-	var rootNotes []*NoteTree
-	for _, note := range noteMap {
-		isChild := false
-		for _, potentialParent := range noteMap {
-			for _, child := range potentialParent.Children {
-				if child.ID == note.ID {
-					isChild = true
-					break
-				}
-			}
-			if isChild {
-				break
-			}
-		}
-		if !isChild {
-			rootNotes = append(rootNotes, note)
-		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1376,82 +1319,12 @@ func deleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTasksWithDetails(w http.ResponseWriter, r *http.Request) {
-	// Query to get tasks with their schedules and clocks
-	query := `
-        SELECT
-            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort,
-            t.deadline, t.priority, t.all_day, t.goal_relationship,
-            t.created_at, t.modified_at,
-            ts.id, ts.start_datetime, ts.end_datetime,
-            tc.id, tc.clock_in, tc.clock_out
-        FROM tasks t
-        LEFT JOIN task_schedules ts ON t.id = ts.task_id
-        LEFT JOIN task_clocks tc ON t.id = tc.task_id
-        ORDER BY t.id, ts.id, tc.id
-    `
+    tasks, err := buildTasksWithDetails(db)
 
-	rows, err := db.Query(query)
 	if err != nil {
-		log.Printf("Error querying tasks: %v", err)
+		log.Printf("Error building task list: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-	defer rows.Close()
-
-	tasksMap := make(map[int]*TaskWithDetails)
-
-	for rows.Next() {
-		var task TaskWithDetails
-		var schedule TaskSchedule
-		var clock TaskClock
-		var scheduleID, clockID sql.NullInt64
-		var startDatetime, endDatetime, clockIn, clockOut sql.NullString
-
-		err := rows.Scan(
-			&task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
-			&task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
-			&task.CreatedAt, &task.ModifiedAt,
-			&scheduleID, &startDatetime, &endDatetime,
-			&clockID, &clockIn, &clockOut,
-		)
-		if err != nil {
-			log.Printf("Error scanning row: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		if existingTask, ok := tasksMap[task.ID]; ok {
-			task = *existingTask
-		} else {
-			tasksMap[task.ID] = &task
-		}
-
-		if scheduleID.Valid {
-			schedule.ID = int(scheduleID.Int64)
-			schedule.StartDatetime = startDatetime.String
-			schedule.EndDatetime = endDatetime.String
-			task.Schedules = append(task.Schedules, schedule)
-		}
-
-		if clockID.Valid {
-			clock.ID = int(clockID.Int64)
-			clock.ClockIn = clockIn.String
-			clock.ClockOut = clockOut.String
-			task.Clocks = append(task.Clocks, clock)
-		}
-
-		tasksMap[task.ID] = &task
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Printf("Error after scanning rows: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	tasks := make([]*TaskWithDetails, 0, len(tasksMap))
-	for _, task := range tasksMap {
-		tasks = append(tasks, task)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1546,322 +1419,247 @@ func createTaskClock(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateTaskSchedule(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    scheduleID := vars["id"]
+	vars := mux.Vars(r)
+	scheduleID := vars["id"]
 
-    var update UpdateTaskSchedule
-    err := json.NewDecoder(r.Body).Decode(&update)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var update UpdateTaskSchedule
+	err := json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Start building the SQL query
-    query := "UPDATE task_schedules SET"
-    var args []interface{}
-    var setFields []string
+	// Start building the SQL query
+	query := "UPDATE task_schedules SET"
+	var args []interface{}
+	var setFields []string
 
-    if update.StartDatetime != "" {
-        args = append(args, update.StartDatetime)
-        setFields = append(setFields, fmt.Sprintf("start_datetime = $%d", len(args)))
-    }
+	if update.StartDatetime != "" {
+		args = append(args, update.StartDatetime)
+		setFields = append(setFields, fmt.Sprintf("start_datetime = $%d", len(args)))
+	}
 
-    if update.EndDatetime != "" {
-        args = append(args, update.EndDatetime)
-        setFields = append(setFields, fmt.Sprintf("end_datetime = $%d", len(args)))
-    }
+	if update.EndDatetime != "" {
+		args = append(args, update.EndDatetime)
+		setFields = append(setFields, fmt.Sprintf("end_datetime = $%d", len(args)))
+	}
 
-    if len(setFields) == 0 {
-        http.Error(w, "No fields to update", http.StatusBadRequest)
-        return
-    }
+	if len(setFields) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
+		return
+	}
 
-    query += " " + strings.Join(setFields, ", ")
-    query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
-    args = append(args, scheduleID)
+	query += " " + strings.Join(setFields, ", ")
+	query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
+	args = append(args, scheduleID)
 
-    // Execute the query
-    result, err := db.Exec(query, args...)
-    if err != nil {
-        log.Printf("Error updating task schedule: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the query
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		log.Printf("Error updating task schedule: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Task schedule not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Task schedule not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule updated successfully"})
 }
 
 func deleteTaskSchedule(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    scheduleID := vars["id"]
+	vars := mux.Vars(r)
+	scheduleID := vars["id"]
 
-    // Execute the delete query
-    result, err := db.Exec("DELETE FROM task_schedules WHERE id = $1", scheduleID)
-    if err != nil {
-        log.Printf("Error deleting task schedule: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the delete query
+	result, err := db.Exec("DELETE FROM task_schedules WHERE id = $1", scheduleID)
+	if err != nil {
+		log.Printf("Error deleting task schedule: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Task schedule not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Task schedule not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule deleted successfully"})
 }
 
 func deleteTaskClock(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    clockID := vars["id"]
+	vars := mux.Vars(r)
+	clockID := vars["id"]
 
-    // Execute the delete query
-    result, err := db.Exec("DELETE FROM task_clocks WHERE id = $1", clockID)
-    if err != nil {
-        log.Printf("Error deleting task clock entry: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the delete query
+	result, err := db.Exec("DELETE FROM task_clocks WHERE id = $1", clockID)
+	if err != nil {
+		log.Printf("Error deleting task clock entry: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Task clock entry not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Task clock entry not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry deleted successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry deleted successfully"})
 }
 
 func updateTaskClock(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    clockID := vars["id"]
+	vars := mux.Vars(r)
+	clockID := vars["id"]
 
-    var update UpdateTaskClock
-    err := json.NewDecoder(r.Body).Decode(&update)
-    if err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
+	var update UpdateTaskClock
+	err := json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-    // Start building the SQL query
-    query := "UPDATE task_clocks SET"
-    var args []interface{}
-    var setFields []string
+	// Start building the SQL query
+	query := "UPDATE task_clocks SET"
+	var args []interface{}
+	var setFields []string
 
-    if update.ClockIn != "" {
-        args = append(args, update.ClockIn)
-        setFields = append(setFields, fmt.Sprintf("clock_in = $%d", len(args)))
-    }
+	if update.ClockIn != "" {
+		args = append(args, update.ClockIn)
+		setFields = append(setFields, fmt.Sprintf("clock_in = $%d", len(args)))
+	}
 
-    if update.ClockOut != "" {
-        args = append(args, update.ClockOut)
-        setFields = append(setFields, fmt.Sprintf("clock_out = $%d", len(args)))
-    }
+	if update.ClockOut != "" {
+		args = append(args, update.ClockOut)
+		setFields = append(setFields, fmt.Sprintf("clock_out = $%d", len(args)))
+	}
 
-    if len(setFields) == 0 {
-        http.Error(w, "No fields to update", http.StatusBadRequest)
-        return
-    }
+	if len(setFields) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
+		return
+	}
 
-    query += " " + strings.Join(setFields, ", ")
-    query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
-    args = append(args, clockID)
+	query += " " + strings.Join(setFields, ", ")
+	query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
+	args = append(args, clockID)
 
-    // Execute the query
-    result, err := db.Exec(query, args...)
-    if err != nil {
-        log.Printf("Error updating task clock: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	// Execute the query
+	result, err := db.Exec(query, args...)
+	if err != nil {
+		log.Printf("Error updating task clock: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        log.Printf("Error getting rows affected: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    if rowsAffected == 0 {
-        http.Error(w, "Task clock entry not found", http.StatusNotFound)
-        return
-    }
+	if rowsAffected == 0 {
+		http.Error(w, "Task clock entry not found", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry updated successfully"})
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Task clock entry updated successfully"})
 }
 
 func getTasksWithDetailsAsTree(w http.ResponseWriter, r *http.Request) {
-    // Get the flat list of tasks
-    tasks := getTasksWithDetailsAsList()
+	// Get the flat list of tasks
+	tasks, err := buildTasksWithDetails(db)
+	if err != nil {
+		log.Printf("Error building task list: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Create a map of tasks by note ID for easy lookup
-    taskMap := make(map[int]*TaskTreeNode)
-    for _, task := range tasks {
-        taskMap[task.NoteID] = &TaskTreeNode{Task: task}
-    }
+	// Get the note tree
+	noteHierarchy, err := buildNoteTree(db)
+	if err != nil {
+		log.Printf("Error building note tree: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-    // Query to get the note hierarchy
-    rows, err := db.Query("SELECT parent_note_id, child_note_id FROM note_hierarchy")
-    if err != nil {
-        log.Printf("Error querying note hierarchy: %v", err)
-        http.Error(w, "Internal server error", http.StatusInternalServerError)
-        return
-    }
-    defer rows.Close()
+	// Create a set of NoteIDs that are referenced in tasks
+	taskNoteIDs := make(map[int]bool)
+	for _, task := range tasks {
+		taskNoteIDs[task.NoteID] = true
+	}
 
-    // Build the tree structure
-    var rootTasks []*TaskTreeNode
-    for rows.Next() {
-        var parentNoteID, childNoteID int
-        if err := rows.Scan(&parentNoteID, &childNoteID); err != nil {
-            log.Printf("Error scanning row: %v", err)
-            http.Error(w, "Internal server error", http.StatusInternalServerError)
-            return
-        }
+	// Filter the note hierarchy
+	filteredNotes := filterNotesForTasks(noteHierarchy, taskNoteIDs)
 
-        childNode, childExists := taskMap[childNoteID]
-        if !childExists {
-            continue // Skip if the child note is not a task
-        }
-
-        parentNode, parentExists := taskMap[parentNoteID]
-        if parentExists {
-            parentNode.Children = append(parentNode.Children, childNode)
-        } else {
-            rootTasks = append(rootTasks, childNode)
-        }
-    }
-
-    // Add any tasks that are not in the hierarchy to the root level
-    for _, task := range taskMap {
-        isChild := false
-        for _, rootTask := range rootTasks {
-            if isDescendant(rootTask, task) {
-                isChild = true
-                break
-            }
-        }
-        if !isChild {
-            rootTasks = append(rootTasks, task)
-        }
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(rootTasks)
+	// Respond with the filtered note tree
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(filteredNotes); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
-func getTasksWithDetailsAsList() []TaskWithDetails {
-    query := `
-        SELECT
-            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort,
-            t.deadline, t.priority, t.all_day, t.goal_relationship,
-            t.created_at, t.modified_at,
-            ts.id, ts.start_datetime, ts.end_datetime,
-            tc.id, tc.clock_in, tc.clock_out
-        FROM tasks t
-        LEFT JOIN task_schedules ts ON t.id = ts.task_id
-        LEFT JOIN task_clocks tc ON t.id = tc.task_id
-        ORDER BY t.id, ts.id, tc.id
-    `
-
-    rows, err := db.Query(query)
-    if err != nil {
-        log.Printf("Error querying tasks: %v", err)
-        return nil
-    }
-    defer rows.Close()
-
-    tasksMap := make(map[int]*TaskWithDetails)
-
-    for rows.Next() {
-        var task TaskWithDetails
-        var schedule TaskSchedule
-        var clock TaskClock
-        var scheduleID, clockID sql.NullInt64
-        var startDatetime, endDatetime, clockIn, clockOut sql.NullString
-
-        err := rows.Scan(
-            &task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
-            &task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
-            &task.CreatedAt, &task.ModifiedAt,
-            &scheduleID, &startDatetime, &endDatetime,
-            &clockID, &clockIn, &clockOut,
-        )
-        if err != nil {
-            log.Printf("Error scanning row: %v", err)
-            return nil
-        }
-
-        if existingTask, ok := tasksMap[task.ID]; ok {
-            task = *existingTask
-        } else {
-            tasksMap[task.ID] = &task
-        }
-
-        if scheduleID.Valid {
-            schedule.ID = int(scheduleID.Int64)
-            schedule.StartDatetime = startDatetime.String
-            schedule.EndDatetime = endDatetime.String
-            task.Schedules = append(task.Schedules, schedule)
-        }
-
-        if clockID.Valid {
-            clock.ID = int(clockID.Int64)
-            clock.ClockIn = clockIn.String
-            clock.ClockOut = clockOut.String
-            task.Clocks = append(task.Clocks, clock)
-        }
-
-        tasksMap[task.ID] = &task
-    }
-
-    tasks := make([]TaskWithDetails, 0, len(tasksMap))
-    for _, task := range tasksMap {
-        tasks = append(tasks, *task)
-    }
-
-    return tasks
+// filterNotesForTasks filters the note tree to include only notes with IDs present in the taskNoteIDs set
+func filterNotesForTasks(notes []*NoteTree, taskNoteIDs map[int]bool) []*NoteTree {
+	var filtered []*NoteTree
+	for _, note := range notes {
+		if taskNoteIDs[note.ID] {
+			// Recursively filter children
+			note.Children = filterNotesForTasks(note.Children, taskNoteIDs)
+			filtered = append(filtered, note)
+		} else {
+			// Recursively check children and promote valid sub-trees
+			children := filterNotesForTasks(note.Children, taskNoteIDs)
+			// If children are retained, keep this node to maintain hierarchy
+			if len(children) > 0 {
+				note.Children = children
+				filtered = append(filtered, note)
+			}
+		}
+	}
+	return filtered
 }
+
+
 
 func isDescendant(root *TaskTreeNode, node *TaskTreeNode) bool {
-    if root == node {
-        return true
-    }
-    for _, child := range root.Children {
-        if isDescendant(child, node) {
-            return true
-        }
-    }
-    return false
+	if root == node {
+		return true
+	}
+	for _, child := range root.Children {
+		if isDescendant(child, node) {
+			return true
+		}
+	}
+	return false
 }
 
 // Helper function to check if a string is in a slice
@@ -2000,6 +1798,150 @@ func deleteNote(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Note deleted successfully"})
+}
+
+
+func buildTasksWithDetails(db *sql.DB) ([]*TaskWithDetails, error) {
+	// Query to get tasks with their schedules and clocks
+	query := `
+        SELECT
+            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort,
+            t.deadline, t.priority, t.all_day, t.goal_relationship,
+            t.created_at, t.modified_at,
+            ts.id, ts.start_datetime, ts.end_datetime,
+            tc.id, tc.clock_in, tc.clock_out
+        FROM tasks t
+        LEFT JOIN task_schedules ts ON t.id = ts.task_id
+        LEFT JOIN task_clocks tc ON t.id = tc.task_id
+        ORDER BY t.id, ts.id, tc.id
+    `
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("error querying tasks: %w", err)
+	}
+	defer rows.Close()
+
+	tasksMap := make(map[int]*TaskWithDetails)
+
+	for rows.Next() {
+		var task TaskWithDetails
+		var schedule TaskSchedule
+		var clock TaskClock
+		var scheduleID, clockID sql.NullInt64
+		var startDatetime, endDatetime, clockIn, clockOut sql.NullString
+
+		err := rows.Scan(
+			&task.ID, &task.NoteID, &task.Status, &task.EffortEstimate, &task.ActualEffort,
+			&task.Deadline, &task.Priority, &task.AllDay, &task.GoalRelationship,
+			&task.CreatedAt, &task.ModifiedAt,
+			&scheduleID, &startDatetime, &endDatetime,
+			&clockID, &clockIn, &clockOut,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+
+		if existingTask, ok := tasksMap[task.ID]; ok {
+			task = *existingTask
+		} else {
+			tasksMap[task.ID] = &task
+		}
+
+		if scheduleID.Valid {
+			schedule.ID = int(scheduleID.Int64)
+			schedule.StartDatetime = startDatetime.String
+			schedule.EndDatetime = endDatetime.String
+			task.Schedules = append(task.Schedules, schedule)
+		}
+
+		if clockID.Valid {
+			clock.ID = int(clockID.Int64)
+			clock.ClockIn = clockIn.String
+			clock.ClockOut = clockOut.String
+			task.Clocks = append(task.Clocks, clock)
+		}
+
+		tasksMap[task.ID] = &task
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error after scanning rows: %w", err)
+	}
+
+	tasks := make([]*TaskWithDetails, 0, len(tasksMap))
+	for _, task := range tasksMap {
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
+}
+
+
+
+func buildNoteTree(db *sql.DB) ([]*NoteTree, error) {
+
+	// Query all notes
+	rows, err := db.Query("SELECT id, title FROM notes")
+	if err != nil {
+		return nil, fmt.Errorf("error querying notes: %w", err)
+	}
+	defer rows.Close()
+
+	noteMap := make(map[int]*NoteTree)
+	for rows.Next() {
+		var id int
+		var title string
+		if err := rows.Scan(&id, &title); err != nil {
+			return nil, fmt.Errorf("error scanning note row: %w", err)
+		}
+		noteMap[id] = &NoteTree{ID: id, Title: title}
+	}
+
+	// Query the note hierarchy
+	rows, err = db.Query("SELECT parent_note_id, child_note_id, hierarchy_type FROM note_hierarchy")
+	if err != nil {
+		return nil, fmt.Errorf("error querying note hierarchy: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var parentID, childID int
+		var hierarchyType string
+		if err := rows.Scan(&parentID, &childID, &hierarchyType); err != nil {
+			return nil, fmt.Errorf("error scanning note hierarchy row: %w", err)
+		}
+		parent := noteMap[parentID]
+		child := noteMap[childID]
+		if child != nil {
+			child.Type = hierarchyType
+		}
+		if parent != nil {
+			parent.Children = append(parent.Children, child)
+		}
+	}
+
+	// Find root notes (notes without parents)
+	var rootNotes []*NoteTree
+	for _, note := range noteMap {
+		isChild := false
+		for _, potentialParent := range noteMap {
+			for _, child := range potentialParent.Children {
+				if child.ID == note.ID {
+					isChild = true
+					break
+				}
+			}
+			if isChild {
+				break
+			}
+		}
+		if !isChild {
+			rootNotes = append(rootNotes, note)
+		}
+	}
+
+	return rootNotes, nil
+
 }
 
 func detectCycle(parents, children []int) bool {
