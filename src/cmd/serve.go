@@ -52,6 +52,12 @@ type AddTagToNote struct {
     TagID int `json:"tag_id"`
 }
 
+// Category represents a category structure
+type Category struct {
+    ID   int    `json:"id"`
+    Name string `json:"name"`
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -100,6 +106,7 @@ func serve() {
 	r.HandleFunc("/tags", createTag).Methods("POST")
 	r.HandleFunc("/tags", listTags).Methods("GET")
 	r.HandleFunc("/notes/{id}/tags", addTagToNote).Methods("POST")
+	r.HandleFunc("/categories", listCategories).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -256,4 +263,34 @@ func addTagToNote(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Tag added to note successfully"})
+}
+
+func listCategories(w http.ResponseWriter, r *http.Request) {
+    rows, err := db.Query("SELECT id, name FROM categories ORDER BY name")
+    if err != nil {
+        log.Printf("Error querying categories: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var categories []Category
+    for rows.Next() {
+        var c Category
+        if err := rows.Scan(&c.ID, &c.Name); err != nil {
+            log.Printf("Error scanning category row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        categories = append(categories, c)
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error after scanning category rows: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(categories)
 }
