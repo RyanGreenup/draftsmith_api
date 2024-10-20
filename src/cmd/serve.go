@@ -218,6 +218,7 @@ func serve() {
 	r.HandleFunc("/notes/no-content", getNoteTitlesAndIDs).Methods("GET")
 	r.HandleFunc("/notes/search", searchNotes).Methods("GET")
 	r.HandleFunc("/tags/{id}", updateTag).Methods("PUT")
+	r.HandleFunc("/tags/{id}", deleteTag).Methods("DELETE")
 	r.HandleFunc("/tags/hierarchy/{childId}", deleteTagHierarchyEntry).Methods("DELETE")
 	r.HandleFunc("/notes/hierarchy/{childId}", deleteNoteHierarchyEntry).Methods("DELETE")
 	r.HandleFunc("/notes/hierarchy/{childId}", updateNoteHierarchyEntry).Methods("PUT")
@@ -1092,6 +1093,66 @@ func updateTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry updated successfully"})
+}
+
+func deleteTag(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    tagID := vars["id"]
+
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Delete related entries in note_tags
+    _, err = tx.Exec("DELETE FROM note_tags WHERE tag_id = $1", tagID)
+    if err != nil {
+        log.Printf("Error deleting from note_tags: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Delete related entries in tag_hierarchy
+    _, err = tx.Exec("DELETE FROM tag_hierarchy WHERE parent_tag_id = $1 OR child_tag_id = $1", tagID)
+    if err != nil {
+        log.Printf("Error deleting from tag_hierarchy: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Delete the tag
+    result, err := tx.Exec("DELETE FROM tags WHERE id = $1", tagID)
+    if err != nil {
+        log.Printf("Error deleting tag: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Tag not found", http.StatusNotFound)
+        return
+    }
+
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Tag deleted successfully"})
 }
 
 func deleteNote(w http.ResponseWriter, r *http.Request) {
