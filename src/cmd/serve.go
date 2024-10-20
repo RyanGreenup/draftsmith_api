@@ -160,6 +160,7 @@ func serve() {
 	r.HandleFunc("/tags/tree", getTagTree).Methods("GET")
 	r.HandleFunc("/notes/tree", getNoteTree).Methods("GET")
 	r.HandleFunc("/tags/with-notes", getTagsWithNotes).Methods("GET")
+	r.HandleFunc("/notes/titles", getNoteTitlesAndIDs).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -650,4 +651,41 @@ func getTagsWithNotes(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(tagsWithNotes)
+}
+
+func getNoteTitlesAndIDs(w http.ResponseWriter, r *http.Request) {
+    rows, err := db.Query("SELECT id, title FROM notes ORDER BY id")
+    if err != nil {
+        log.Printf("Error querying database: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var notes []struct {
+        ID    int    `json:"id"`
+        Title string `json:"title"`
+    }
+
+    for rows.Next() {
+        var note struct {
+            ID    int    `json:"id"`
+            Title string `json:"title"`
+        }
+        if err := rows.Scan(&note.ID, &note.Title); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        notes = append(notes, note)
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error after scanning rows: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(notes)
 }
