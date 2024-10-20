@@ -87,6 +87,11 @@ type TagWithNotes struct {
 	Notes []NoteInfo `json:"notes"`
 }
 
+// UpdateTagRequest represents the request body for updating a tag
+type UpdateTagRequest struct {
+    Name string `json:"name"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
     query := r.URL.Query().Get("q")
     if query == "" {
@@ -210,6 +215,7 @@ func serve() {
 	r.HandleFunc("/tags/with-notes", getTagsWithNotes).Methods("GET")
 	r.HandleFunc("/notes/no-content", getNoteTitlesAndIDs).Methods("GET")
 	r.HandleFunc("/notes/search", searchNotes).Methods("GET")
+	r.HandleFunc("/tags/{id}", updateTag).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -743,4 +749,43 @@ func getNoteTitlesAndIDs(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding JSON response: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
+}
+
+func updateTag(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    tagID := vars["id"]
+
+    var req UpdateTagRequest
+    err := json.NewDecoder(r.Body).Decode(&req)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    if req.Name == "" {
+        http.Error(w, "Tag name cannot be empty", http.StatusBadRequest)
+        return
+    }
+
+    result, err := db.Exec("UPDATE tags SET name = $1 WHERE id = $2", req.Name, tagID)
+    if err != nil {
+        log.Printf("Error updating tag: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Tag not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Tag updated successfully"})
 }
