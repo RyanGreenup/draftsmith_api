@@ -52,8 +52,8 @@ CREATE TABLE note_categories (
 CREATE TABLE tag_hierarchy (
     id SERIAL PRIMARY KEY,
     parent_tag_id INT REFERENCES tags(id),
-    child_tag_id INT REFERENCES tags(id)
-    -- UNIQUE (child_note_id)  -- Tags can have multiple parents
+    child_tag_id INT REFERENCES tags(id),
+    UNIQUE (child_tag_id)  -- Tags can only have one parent
 );
 
 
