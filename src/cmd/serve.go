@@ -58,6 +58,11 @@ type Category struct {
     Name string `json:"name"`
 }
 
+// NewCategory represents the structure for creating a new category
+type NewCategory struct {
+    Name string `json:"name"`
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -107,6 +112,7 @@ func serve() {
 	r.HandleFunc("/tags", listTags).Methods("GET")
 	r.HandleFunc("/notes/{id}/tags", addTagToNote).Methods("POST")
 	r.HandleFunc("/categories", listCategories).Methods("GET")
+	r.HandleFunc("/categories", createCategory).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -293,4 +299,27 @@ func listCategories(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(categories)
+}
+
+func createCategory(w http.ResponseWriter, r *http.Request) {
+    var newCategory NewCategory
+    err := json.NewDecoder(r.Body).Decode(&newCategory)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    var categoryID int
+    err = db.QueryRow("INSERT INTO categories (name) VALUES ($1) RETURNING id", newCategory.Name).Scan(&categoryID)
+    if err != nil {
+        log.Printf("Error creating category: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Category created successfully",
+        "id":      categoryID,
+    })
 }
