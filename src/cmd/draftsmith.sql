@@ -128,8 +128,11 @@ CREATE TABLE tasks (
     actual_effort NUMERIC,                -- Actual effort in hours
     deadline TIMESTAMP,                   -- Deadline for the task
     priority INT CHECK (priority BETWEEN 1 AND 5), -- Priority of the task
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     all_day BOOLEAN DEFAULT FALSE,  -- Flag for all-day events (e.g. Daylight Saving savings on this day)
-    goal_relationship INT CHECK (goal_relationship BETWEEN 1 AND 5) -- Relationship to goals
+    goal_relationship INT CHECK (goal_relationship BETWEEN 1 AND 5), -- Relationship to goals
+    UNIQUE (note_id)  -- A note can only be a task once, otherwise conflicts arise with schedule etc.
 );
 
 -- Schedule tasks over certain days
