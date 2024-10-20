@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Environmental Informatics (MATH3005)</title>
+        <title>Draftsmith Note Server</title>
         <meta name="robots" content="noindex">
 
 
@@ -147,7 +147,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">Environmental Informatics (MATH3005)</h1>
+                    <h1 class="menu-title">Draftsmith Note Server</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
@@ -419,8 +419,7 @@
 </style>
 <h1 id="draftsmith"><a class="header" href="#draftsmith">Draftsmith</a></h1>
 <h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
-<p><img src="./assets/logo.png" style="float: left; width: 80px" /></p>
-<p><img src="./assets/logo.png" alt="" /></p>
+<p><img src="assets/logo.png" style="float: left; width: 80px" /></p>
 <p>Draftsmith is notetaking tool that uses PostgreSQL as a backend to implement full text search and semantic search via an openAI API. This is an API that is used to interact with the database and can be implemented by any front-end application, basically a bring your own GUI.</p>
 <p>See the PyQt6 GUI implementation [here (TODO)] and the Neovim Extension [here (TODO)].</p>
 <p>It is designed to be a simple, fast, and reliable way to take notes, whilst remaining feature complete and open source.</p>
@@ -926,6 +925,1013 @@
 }
 </style>
 <h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
+<h2 id="start-the-server"><a class="header" href="#start-the-server">Start the Server:</a></h2>
+<p>First, start the server:</p>
+<pre><code class="language-sh">draftsmith serve
+</code></pre>
+<h2 id="api"><a class="header" href="#api">API</a></h2>
+<ul>
+<li>Notes
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Create</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Update</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Delete</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Get</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Search</li>
+<li>Heirarchy
+<ul>
+<li><input disabled="" type="checkbox"/>
+Create</li>
+<li><input disabled="" type="checkbox"/>
+Get (Tree)</li>
+<li><input disabled="" type="checkbox"/>
+Delete</li>
+<li><input disabled="" type="checkbox"/>
+Update</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Tags
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Create</li>
+<li><input disabled="" type="checkbox"/>
+Update</li>
+<li><input disabled="" type="checkbox"/>
+Delete</li>
+<li><input disabled="" type="checkbox"/>
+Assign</li>
+<li><input disabled="" type="checkbox"/>
+Get</li>
+<li>Filter is left to client with a <code>fzf</code></li>
+<li><input disabled="" type="checkbox"/>
+Search
+<ul>
+<li>Search notes assigned to a tag</li>
+</ul>
+</li>
+<li>Heirarchy
+<ul>
+<li><input disabled="" type="checkbox"/>
+Create</li>
+<li><input disabled="" type="checkbox"/>
+Get (Tree)</li>
+<li><input disabled="" type="checkbox"/>
+Delete</li>
+<li><input disabled="" type="checkbox"/>
+Update</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Tasks
+<ul>
+<li>Assign
+<ul>
+<li><input disabled="" type="checkbox"/>
+Create</li>
+<li><input disabled="" type="checkbox"/>
+Delete</li>
+<li><input disabled="" type="checkbox"/>
+Update</li>
+<li><input disabled="" type="checkbox"/>
+Get</li>
+</ul>
+</li>
+<li>Schedule
+<ul>
+<li><input disabled="" type="checkbox"/>
+Create</li>
+<li><input disabled="" type="checkbox"/>
+Delete</li>
+<li><input disabled="" type="checkbox"/>
+Update</li>
+<li><input disabled="" type="checkbox"/>
+Get</li>
+</ul>
+</li>
+<li>Clock in
+<ul>
+<li><input disabled="" type="checkbox"/>
+Create</li>
+<li><input disabled="" type="checkbox"/>
+Delete</li>
+<li><input disabled="" type="checkbox"/>
+Update</li>
+<li><input disabled="" type="checkbox"/>
+Get</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Categories
+<ul>
+<li><input disabled="" type="checkbox"/>
+List</li>
+</ul>
+</li>
+</ul>
+<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
+<h4 id="discussion"><a class="header" href="#discussion">Discussion</a></h4>
+<h5 id="flat"><a class="header" href="#flat">Flat</a></h5>
+<p>Notes are stored in a table <code>notes</code> like so:</p>
+<pre><code>-[ RECORD 1 ]--------------------------------------------
+id          | 1
+title       | First note
+content     | This is the first note in the system.
+created_at  | 2024-10-20 05:04:42.709064
+modified_at | 2024-10-20 05:04:42.709064
+fts         | 'first':1,6 'note':2,7 'system':10
+-[ RECORD 2 ]--------------------------------------------
+id          | 2
+title       | Foo
+content     | This is the updated content of the note.
+created_at  | 2024-10-20 05:04:42.709064
+modified_at | 2024-10-20 05:15:03.334779
+fts         | 'content':6 'foo':1 'note':9 'updat':5
+-[ RECORD 3 ]--------------------------------------------
+id          | 3
+title       | Foo
+content     | Bar
+created_at  | 2024-10-20 05:20:20.938922
+modified_at | 2024-10-20 05:20:20.938922
+fts         | 'bar':2 'foo':1
+-[ RECORD 4 ]--------------------------------------------
+id          | 4
+title       | New Note Title
+content     | This is the content of the new note.
+created_at  | 2024-10-20 05:20:43.792369
+modified_at | 2024-10-20 05:20:43.792369
+fts         | 'content':7 'new':1,10 'note':2,11 'titl':3
+
+draftsmith=#
+</code></pre>
+<h5 id="heirarchy"><a class="header" href="#heirarchy">Heirarchy</a></h5>
+<p>There is a table <code>note_heirarchy</code> that stores the heirarchy of notes. The <code>hierarchy_type</code> column can be <code>subpage</code> or <code>section</code>:</p>
+<pre><code>select * from note_hierarchy;
+ id | parent_note_id | child_note_id | hierarchy_type
+----+----------------+---------------+----------------
+  1 |              1 |             2 | subpage
+  2 |              1 |             2 | subpage
+(2 rows)
+</code></pre>
+<h4 id="flat-1"><a class="header" href="#flat-1">Flat</a></h4>
+<h5 id="create"><a class="header" href="#create">Create</a></h5>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/notes \
+      -H "Content-Type: application/json" \
+      -d '{"title": "New Note Title", "content": "This is the content of the new note."}'
+
+</code></pre>
+<pre><code class="language-json">{"id":4,"message":"Note created successfully"}
+</code></pre>
+<h5 id="update"><a class="header" href="#update">Update</a></h5>
+<p>To update the title of note 1:</p>
+<pre><code class="language-sh">curl -X PUT -H "Content-Type: application/json" -d '{"title":"New Title"}' http://localhost:37238/notes/1
+</code></pre>
+<p>To update the content:</p>
+<pre><code class="language-sh">curl -X PUT -H "Content-Type: application/json" -d '{"content":"New content"}' http://localhost:37238/notes/1
+</code></pre>
+<h5 id="delete"><a class="header" href="#delete">Delete</a></h5>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/notes/6
+</code></pre>
+<pre><code class="language-json">{"message":"Note deleted successfully"}
+</code></pre>
+<h5 id="get"><a class="header" href="#get">Get</a></h5>
+<h6 id="all"><a class="header" href="#all">All</a></h6>
+<pre><code>curl http://localhost:37238/notes | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "First note",
+    "content": "This is the first note in the system.",
+    "created_at": "2024-10-20T05:04:42.709064Z",
+    "modified_at": "2024-10-20T05:04:42.709064Z"
+  },
+  {
+    "id": 2,
+    "title": "Foo",
+    "content": "This is the updated content of the note.",
+    "created_at": "2024-10-20T05:04:42.709064Z",
+    "modified_at": "2024-10-20T05:15:03.334779Z"
+  },
+  {
+    "id": 3,
+    "title": "Foo",
+    "content": "Bar",
+    "created_at": "2024-10-20T05:20:20.938922Z",
+    "modified_at": "2024-10-20T05:20:20.938922Z"
+  },
+  {
+    "id": 4,
+    "title": "New Note Title",
+    "content": "This is the content of the new note.",
+    "created_at": "2024-10-20T05:20:43.792369Z",
+    "modified_at": "2024-10-20T05:20:43.792369Z"
+  }
+]
+
+</code></pre>
+<p>It's also possible to get notes without their content (useful for palettes etc.):</p>
+<pre><code class="language-sh">curl http://localhost:37238/notes/no-content
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "First note",
+    "created_at": "2024-10-20T05:04:42.709064Z",
+    "modified_at": "2024-10-20T05:04:42.709064Z"
+  },
+  {
+    "id": 2,
+    "title": "Foo",
+    "created_at": "2024-10-20T05:04:42.709064Z",
+    "modified_at": "2024-10-20T05:15:03.334779Z"
+  },
+  {
+    "id": 3,
+    "title": "Foo",
+    "created_at": "2024-10-20T05:20:20.938922Z",
+    "modified_at": "2024-10-20T05:20:20.938922Z"
+  },
+  {
+    "id": 4,
+    "title": "New Note Title",
+    "created_at": "2024-10-20T05:20:43.792369Z",
+    "modified_at": "2024-10-20T05:20:43.792369Z"
+  }
+]
+</code></pre>
+<h5 id="search"><a class="header" href="#search">Search</a></h5>
+<p>If using curl, make sure to handle spaces in the query string:</p>
+<pre><code class="language-sh">curl "http://localhost:37238/notes/search?q=updated%20note"
+</code></pre>
+<p>Or use Python:</p>
+<pre><code class="language-python">import requests
+from urllib.parse import quote
+import json
+
+query = quote("updated content")
+response = requests.get(f"http://localhost:37238/notes/search?q={query}")
+# output = json.loads(response.text)
+output = response.json()
+print(json.dumps(output, indent=2))
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 2,
+    "title": "Foo"
+  }
+]
+</code></pre>
+<h4 id="heirarchy-1"><a class="header" href="#heirarchy-1">Heirarchy</a></h4>
+<h5 id="examples"><a class="header" href="#examples">Examples</a></h5>
+<p>Consider some notes:</p>
+<pre><code class="language-sh">curl localhost:37238/notes/tree | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 3,
+            "title": "Foo",
+            "type": "subpage",
+            "children": [
+              {
+                "id": 4,
+                "title": "New Note Title",
+                "type": "subpage"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<p>These can be flattened:</p>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/notes/hierarchy/4
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 4,
+    "title": "New Note Title",
+    "type": ""
+  },
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 3,
+            "title": "Foo",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/notes/hierarchy/3
+curl -X DELETE http://localhost:37238/notes/hierarchy/2
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 3,
+    "title": "Foo",
+    "type": ""
+  },
+  {
+    "id": 4,
+    "title": "New Note Title",
+    "type": ""
+  },
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": ""
+  },
+  {
+    "id": 2,
+    "title": "Foo",
+    "type": ""
+  }
+]
+
+</code></pre>
+<p>Then they can be re-attached:</p>
+<pre><code class="language-python">import requests
+
+# Define the URL endpoint
+url = "http://localhost:37238/notes/hierarchy"
+
+# Define the headers
+headers = {
+    "Content-Type": "application/json"
+}
+
+for i in range(1, 4):
+
+
+    # Define the payload
+    payload = {
+        "parent_note_id": i,
+        "child_note_id": i+1,
+        "hierarchy_type": "subpage"
+    }
+
+    # Make the POST request
+    response = requests.post(url, headers=headers, json=payload)
+
+    # Check the response
+    print(response.status_code)
+    print(response.json())
+
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 3,
+            "title": "Foo",
+            "type": "subpage",
+            "children": [
+              {
+                "id": 4,
+                "title": "New Note Title",
+                "type": "subpage"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<p>Notes can also be detached separately:</p>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/notes/hierarchy/2
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 2,
+    "title": "Foo",
+    "type": "",
+    "children": [
+      {
+        "id": 3,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 4,
+            "title": "New Note Title",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": ""
+  }
+]
+</code></pre>
+<p>To move 4 under 2:</p>
+<pre><code class="language-sh">curl -X PUT http://localhost:37238/notes/hierarchy/4 \
+      -H "Content-Type: application/json" \
+      -d '{"parent_note_id": 2, "hierarchy_type": "subpage"}'
+
+
+</code></pre>
+<pre><code>[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": ""
+  },
+  {
+    "id": 2,
+    "title": "Foo",
+    "type": "",
+    "children": [
+      {
+        "id": 3,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 4,
+            "title": "New Note Title",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<p>We can then update that so 4 is under 2:</p>
+<pre><code class="language-sh">curl -X PUT http://localhost:37238/notes/hierarchy/4 \
+        -H "Content-Type: application/json" \
+        -d '{"parent_note_id": 2, "hierarchy_type": "subpage"}'
+</code></pre>
+<pre><code class="language-sh">curl http://localhost:37238/notes/tree | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 2,
+    "title": "Foo",
+    "type": "",
+    "children": [
+      {
+        "id": 3,
+        "title": "Foo",
+        "type": "subpage"
+      },
+      {
+        "id": 4,
+        "title": "New Note Title",
+        "type": "subpage"
+      }
+    ]
+  },
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": ""
+  }
+]
+</code></pre>
+<p><strong>NOTE</strong>, be careful here, because the server will check for cycles but nothing is perfect. For example, if we reset them:</p>
+<pre><code class="language-sh">fish
+for i in (seq 4)
+    curl -X DELETE http://localhost:37238/notes/hierarchy/$i
+end
+
+# Run python script above
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 3,
+            "title": "Foo",
+            "type": "subpage",
+            "children": [
+              {
+                "id": 4,
+                "title": "New Note Title",
+                "type": "subpage"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<p>Now If we move 2 under 4:</p>
+<pre><code class="language-sh">curl -X PUT http://localhost:37238/notes/hierarchy/2 \
+        -H "Content-Type: application/json" \
+        -d '{"parent_note_id": 4, "hierarchy_type": "subpage"}'
+
+curl http://localhost:37238/notes/tree | jq
+</code></pre>
+<pre><code class="language-json">
+[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": ""
+  }
+]
+</code></pre>
+<p>Then try to move 2 under 4, we would have this:</p>
+<pre><code>draftsmith=# select * from note_hierarchy;
+ id | parent_note_id | child_note_id | hierarchy_type
+----+----------------+---------------+----------------
+ 21 |              2 |             3 | subpage
+ 22 |              3 |             4 | subpage
+ 20 |              4 |             2 | subpage
+</code></pre>
+<p>Map that out:</p>
+<ul>
+<li>2 -&gt; 3 -&gt; 4 -&gt; 2
+<ul>
+<li>2 -&gt; 3 -&gt; 4 -&gt; 2
+<ul>
+<li>2 -&gt; 3 -&gt; 4 -&gt; 2</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>The server will check this (as of commit <code>53c13f82</code>), the client should also take care not to rely on this.</p>
+<h5 id="create-1"><a class="header" href="#create-1">Create</a></h5>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/notes/hierarchy \
+      -H "Content-Type: application/json" \
+      -d '{"parent_note_id": 1, "child_note_id": 2, "hierarchy_type": "subpage"}'
+
+</code></pre>
+<pre><code class="language-json">{"id":2,"message":"Note hierarchy entry added successfully"}
+</code></pre>
+<h5 id="update-1"><a class="header" href="#update-1">Update</a></h5>
+<p>Clients should use the update endpoint to change the type of heirarchy (e.g. from <code>subpage</code> to <code>section</code>) or to change the parent note. This is better than add and delete because it is atomic (and only one request is needed).</p>
+<pre><code class="language-sh">curl -X PUT http://localhost:37238/notes/hierarchy/4 \
+      -H "Content-Type: application/json" \
+      -d '{"parent_note_id": 2, "hierarchy_type": "subpage"}'
+</code></pre>
+<h5 id="delete-1"><a class="header" href="#delete-1">Delete</a></h5>
+<p>A note can only have one parent, so deleting a heirarchy tags the child tag as an argument.</p>
+<p>For example to remove to from whatever parent it has:</p>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/notes/hierarchy/2
+</code></pre>
+<pre><code>{"message":"Note hierarchy entry deleted successfully"}
+</code></pre>
+<h5 id="get-tree"><a class="header" href="#get-tree">Get (Tree)</a></h5>
+<pre><code class="language-sh">curl http://localhost:37238/notes/tree
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 3,
+    "title": "Foo",
+    "type": ""
+  },
+  {
+    "id": 4,
+    "title": "New Note Title",
+    "type": ""
+  },
+  {
+    "id": 1,
+    "title": "First note",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage"
+      },
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage"
+      }
+    ]
+  }
+]
+</code></pre>
+<h3 id="tags"><a class="header" href="#tags">Tags</a></h3>
+<h4 id="flat-2"><a class="header" href="#flat-2">Flat</a></h4>
+<h5 id="create-2"><a class="header" href="#create-2">Create</a></h5>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/tags \
+  -H "Content-Type: application/json" \
+  -d '{"name": "important"}' \
+  -v -i
+</code></pre>
+<pre><code class="language-json">{"id":7,"message":"Tag created successfully"}
+</code></pre>
+<h5 id="assign"><a class="header" href="#assign">Assign</a></h5>
+<p>To assign tag_id 3 to note_id 2:</p>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/notes/2/tags \
+      -H "Content-Type: application/json" \
+      -d '{"tag_id": 3}'
+
+</code></pre>
+<h5 id="update-2"><a class="header" href="#update-2">Update</a></h5>
+<pre><code class="language-sh">curl -X PUT -H "Content-Type: application/json" -d '{"name":"New Tag Name"}' http://localhost:37238/tags/1
+</code></pre>
+<pre><code class="language-json">{"message":"Tag updated successfully"}
+</code></pre>
+<h5 id="delete-2"><a class="header" href="#delete-2">Delete</a></h5>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/tags/5
+</code></pre>
+<pre><code>{"message":"Tag deleted successfully"}
+</code></pre>
+<h5 id="get-1"><a class="header" href="#get-1">Get</a></h5>
+<h6 id="tag-and-notes"><a class="header" href="#tag-and-notes">Tag and Notes</a></h6>
+<p>Create a list of notes</p>
+<pre><code class="language-sh">curl http://localhost:37238/tags/with-notes | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "tag_id": 1,
+    "tag_name": "important",
+    "notes": null
+  },
+  {
+    "tag_id": 3,
+    "tag_name": "todo",
+    "notes": [
+      {
+        "id": 2,
+        "title": "Foo"
+      }
+    ]
+  },
+  {
+    "tag_id": 2,
+    "tag_name": "urgent",
+    "notes": [
+      {
+        "id": 2,
+        "title": "Foo"
+      }
+    ]
+  },
+  {
+    "tag_id": 4,
+    "tag_name": "done",
+    "notes": null
+  },
+  {
+    "tag_id": 5,
+    "tag_name": "important",
+    "notes": null
+  }
+]
+</code></pre>
+<h6 id="tag-names"><a class="header" href="#tag-names">Tag Names</a></h6>
+<p>It may be useful to only get the tag names (e.g. for a combo box):</p>
+<pre><code class="language-sh">curl http://localhost:37238/tags | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 4,
+    "name": "done"
+  },
+  {
+    "id": 1,
+    "name": "important"
+  },
+  {
+    "id": 5,
+    "name": "important"
+  },
+  {
+    "id": 3,
+    "name": "todo"
+  },
+  {
+    "id": 2,
+    "name": "urgent"
+  }
+]
+</code></pre>
+<h5 id="search-1"><a class="header" href="#search-1">Search</a></h5>
+<p>This refers to searching for notes assigned to a tag.</p>
+<p>This is left to the client, simply use a normal search on the notes endpoint and filter by tag. Less code to maintain and the client would need to get a list of tags first anyway.</p>
+<p>For large corpuses it could be more efficient to postgres to do this, but for small corpuses it is not worth the overhead.</p>
+<h5 id="filter"><a class="header" href="#filter">Filter</a></h5>
+<p>This is not implemented, but the client can use <code>fzf</code> to filter tags. It is not implemented because server latency will make it slow for palettes etc., particularly over, e.g. wireguard / tailscale.</p>
+<h4 id="hierarchy"><a class="header" href="#hierarchy">Hierarchy</a></h4>
+<h5 id="create-3"><a class="header" href="#create-3">Create</a></h5>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/tags/hierarchy \
+  -H "Content-Type: application/json" \
+  -d '{"parent_tag_id": 10, "child_tag_id": 5}'
+
+</code></pre>
+<h5 id="update-3"><a class="header" href="#update-3">Update</a></h5>
+<pre><code class="language-sh">curl -X PUT http://localhost:37238/tags/hierarchy/5 \
+      -H "Content-Type: application/json" \
+      -d '{"parent_tag_id": 4}'
+</code></pre>
+<pre><code class="language-json">{"message":"Tag hierarchy entry updated successfully"}
+</code></pre>
+<h5 id="delete-3"><a class="header" href="#delete-3">Delete</a></h5>
+<pre><code class="language-sh">curl -X DELETE http://localhost:37238/tags/hierarchy/3
+</code></pre>
+<pre><code class="language-json">{"message":"Tag hierarchy entry deleted successfully"}
+</code></pre>
+<h5 id="get-tree-1"><a class="header" href="#get-tree-1">Get (Tree)</a></h5>
+<p>To list the tags and the notes they contain:</p>
+<pre><code class="language-sh">curl http://localhost:37238/tags/tree
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "name": "important",
+    "notes": null,
+    "children": [
+      {
+        "id": 2,
+        "name": "urgent",
+        "notes": [
+          {
+            "id": 2,
+            "title": "Foo"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "todo",
+        "notes": [
+          {
+            "id": 2,
+            "title": "Foo"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "done",
+    "notes": null
+  },
+  {
+    "id": 5,
+    "name": "important",
+    "notes": null
+  }
+]
+
+</code></pre>
+<h3 id="tasks"><a class="header" href="#tasks">Tasks</a></h3>
+<h4 id="task-entries"><a class="header" href="#task-entries">Task Entries</a></h4>
+<h5 id="create-4"><a class="header" href="#create-4">Create</a></h5>
+<pre><code class="language-sh"> curl -X POST http://localhost:37238/tasks \
+ -H "Content-Type: application/json" \
+ -d '{
+     "note_id": 1,
+     "status": "todo",
+     "effort_estimate": 2.5,
+     "actual_effort": 0,
+     "deadline": "2023-06-30T15:00:00Z",
+     "priority": 3,
+     "all_day": false,
+     "goal_relationship": 4
+ }'
+</code></pre>
+<pre><code class="language-json">{"id":2,"message":"Task created successfully"}
+</code></pre>
+<h5 id="update-4"><a class="header" href="#update-4">Update</a></h5>
+<p>Updating the status, actual effort, and priority of a task:</p>
+<pre><code class="language-sh"> curl -X PUT http://localhost:37238/tasks/1 \
+ -H "Content-Type: application/json" \
+ -d '{
+     "status": "done",
+     "actual_effort": 3.5,
+     "priority": 4
+ }'
+</code></pre>
+<p>updating a single field:</p>
+<pre><code class="language-sh"> curl -X PUT http://localhost:37238/tasks/1 \
+ -H "Content-Type: application/json" \
+ -d '{"status": "wait"}'
+</code></pre>
+<pre><code class="language-sh"> curl -X PUT http://localhost:37238/tasks/1 \
+ -H "Content-Type: application/json" \
+ -d '{
+     "effort_estimate": 5.0,
+     "deadline": "2023-07-15T14:00:00Z",
+     "all_day": true
+ }'
+</code></pre>
+<h5 id="delete-4"><a class="header" href="#delete-4">Delete</a></h5>
+<pre><code class="language-bash">curl -X DELETE http://localhost:37238/tasks/1
+</code></pre>
+<pre><code class="language-json">{"message":"Task deleted successfully"}
+</code></pre>
+<h5 id="get-2"><a class="header" href="#get-2">Get</a></h5>
+<p>The Get method returns tasks as a json like so:</p>
+<pre><code class="language-bash">curl http://localhost:37238/tasks/details | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 2,
+    "note_id": 1,
+    "status": "todo",
+    "effort_estimate": 2.5,
+    "actual_effort": 0,
+    "deadline": "2023-06-30T15:00:00Z",
+    "priority": 3,
+    "all_day": false,
+    "goal_relationship": 4,
+    "created_at": "2024-10-20T10:31:58.269465Z",
+    "modified_at": "2024-10-20T10:31:58.269465Z",
+    "schedules": [
+      {
+        "id": 1,
+        "start_datetime": "2023-06-01T09:00:00Z",
+        "end_datetime": "2023-06-01T17:00:00Z"
+      }
+    ],
+    "clocks": null
+  },
+  {
+    "id": 7,
+    "note_id": 4,
+    "status": "todo",
+    "effort_estimate": 2.5,
+    "actual_effort": 0,
+    "deadline": "2023-06-30T15:00:00Z",
+    "priority": 3,
+    "all_day": false,
+    "goal_relationship": 4,
+    "created_at": "2024-10-20T10:33:04.594991Z",
+    "modified_at": "2024-10-20T10:33:04.594991Z",
+    "schedules": null,
+    "clocks": [
+      {
+        "id": 1,
+        "clock_in": "2023-06-01T09:00:00Z",
+        "clock_out": "2023-06-01T17:00:00Z"
+      },
+      {
+        "id": 2,
+        "clock_in": "2024-05-01T09:00:00Z",
+        "clock_out": "2024-05-01T17:00:00Z"
+      }
+    ]
+  }
+]
+</code></pre>
+<h4 id="schedule"><a class="header" href="#schedule">Schedule</a></h4>
+<h5 id="create-5"><a class="header" href="#create-5">Create</a></h5>
+<pre><code class="language-bash"> curl -X POST http://localhost:8080/task_schedules \
+ -H "Content-Type: application/json" \
+ -d '{
+     "task_id": 2,
+     "start_datetime": "2023-06-01T09:00:00Z",
+     "end_datetime": "2023-06-01T17:00:00Z"
+ }'
+</code></pre>
+<h5 id="update-5"><a class="header" href="#update-5">Update</a></h5>
+<pre><code class="language-bash">curl -X PUT http://localhost:37238/task_schedules/1 \
+ -H "Content-Type: application/json" \
+ -d '{
+     "start_datetime": "2022-06-02T10:00:00Z",
+     "end_datetime": "2022-06-02T18:00:00Z"
+ }'
+</code></pre>
+<pre><code class="language-json">{"message":"Task schedule updated successfully"}
+</code></pre>
+<h5 id="delete-5"><a class="header" href="#delete-5">Delete</a></h5>
+<pre><code class="language-bash"> curl -X DELETE http://localhost:37238/task_schedules/1
+</code></pre>
+<pre><code class="language-json">{"message":"Task schedule deleted successfully"}
+</code></pre>
+<h5 id="get-3"><a class="header" href="#get-3">Get</a></h5>
+<p>This is handled by the task endpoint, as above.</p>
+<h4 id="clock-in"><a class="header" href="#clock-in">Clock In</a></h4>
+<h5 id="create-6"><a class="header" href="#create-6">Create</a></h5>
+<pre><code class="language-bash">
+curl -X POST http://localhost:37238/task_schedules \
+ -H "Content-Type: application/json" \
+ -d '{
+     "task_id": 2,
+     "start_datetime": "2023-06-01T09:00:00Z",
+     "end_datetime": "2023-06-01T17:00:00Z"
+ }'
+
+</code></pre>
+<pre><code class="language-json">{"id":2,"message":"Task clock entry created successfully"}
+</code></pre>
+<h5 id="update-6"><a class="header" href="#update-6">Update</a></h5>
+<pre><code class="language-bash"> curl -X PUT http://localhost:8080/task_clocks/1 -H "Content-Type: application/json" -d '{"clock_in": "2023-05-20T09:00:00Z",
+ "clock_out": "2023-05-20T17:00:00Z"}'
+</code></pre>
+<pre><code class="language-json">{"message":"Task clock entry updated successfully"}
+</code></pre>
+<h5 id="delete-6"><a class="header" href="#delete-6">Delete</a></h5>
+<pre><code class="language-bash">curl -X DELETE http://localhost:8080/task_clocks/1
+</code></pre>
+<pre><code class="language-json">{"message":"Task clock entry deleted successfully"}
+</code></pre>
+<h5 id="get-4"><a class="header" href="#get-4">Get</a></h5>
+<p>This is handled by the task endpoint, as above.</p>
+<h3 id="categories"><a class="header" href="#categories">Categories</a></h3>
+<p>Categories were abandoned in favor of tags. They are not implemented. There may be some leftover endpoints, these will be removed.</p>
+<h4 id="get-5"><a class="header" href="#get-5">Get</a></h4>
+<pre><code class="language-sh">curl http://localhost:37238/categories | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 3,
+    "name": "Ideas"
+  },
+  {
+    "id": 4,
+    "name": "Journal"
+  },
+  {
+    "id": 1,
+    "name": "Personal"
+  },
+  {
+    "id": 2,
+    "name": "Work"
+  }
+]
+
+</code></pre>
+<h4 id="create-7"><a class="header" href="#create-7">Create</a></h4>
+<pre><code class="language-sh"> curl -X POST http://localhost:37238/categories \
+            -H "Content-Type: application/json" \
+            -d '{"name": "New Category"}'
+
+</code></pre>
+<pre><code class="language-json">{"id":5,"message":"Category created successfully"}
+</code></pre>
+<h4 id="assign-1"><a class="header" href="#assign-1">Assign</a></h4>
+<p>To assign category_id 3 to note_id 1:</p>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/notes/1/categories \
+      -H "Content-Type: application/json" \
+      -d '{"category_id": 3}'
+
+
+</code></pre>
+<h4 id="assign-heirarchy"><a class="header" href="#assign-heirarchy">Assign Heirarchy</a></h4>
+<pre><code class="language-sh">curl -X POST http://localhost:37238/tags/hierarchy \
+      -H "Content-Type: application/json" \
+      -d '{"parent_tag_id": 1, "child_tag_id": 2}'
+</code></pre>
+<pre><code class="language-json">{"id":4,"message":"Tag hierarchy entry added successfully"}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <style>
 .mdbook-callouts {
@@ -1164,7 +2170,7 @@
   --color-pink: #d53984;
 }
 </style>
-<h1 id="api"><a class="header" href="#api">API</a></h1>
+<h1 id="api-1"><a class="header" href="#api-1">API</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <style>
 .mdbook-callouts {

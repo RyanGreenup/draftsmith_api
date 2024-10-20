@@ -3,7 +3,7 @@ authors = ["Ryan G"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Environmental Informatics (MATH3005)"
+title = "Draftsmith Note Server"
 
 # For Admonitions
 # https://github.com/tommilligan/mdbook-admonish
