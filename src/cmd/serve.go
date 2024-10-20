@@ -21,6 +21,12 @@ type Note struct {
 	Title string `json:"title"`
 }
 
+// NoteUpdate represents the structure for updating a note
+type NoteUpdate struct {
+    Title   string `json:"title"`
+    Content string `json:"content"`
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -64,6 +70,7 @@ func serve() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/titles", getNoteTitles).Methods("GET")
+	r.HandleFunc("/notes/{id}", updateNote).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -98,4 +105,27 @@ func getNoteTitles(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(notes)
+}
+
+func updateNote(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    id := vars["id"]
+
+    var update NoteUpdate
+    err := json.NewDecoder(r.Body).Decode(&update)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    _, err = db.Exec("UPDATE notes SET title = $1, content = $2, modified_at = CURRENT_TIMESTAMP WHERE id = $3",
+        update.Title, update.Content, id)
+    if err != nil {
+        log.Printf("Error updating note: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Note updated successfully"})
 }
