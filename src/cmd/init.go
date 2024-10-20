@@ -77,6 +77,10 @@ This requires the database to be dropped first, use the drop command to do this.
 		}
 		defer db.Close()
 
+		// Add debug output for SQL commands
+		fmt.Println("Debug: SQL commands:")
+		fmt.Println(sql_commands)
+
 		// Execute SQL commands
 		_, err = db.Exec(sql_commands)
 		if err != nil {
