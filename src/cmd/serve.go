@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -156,6 +157,11 @@ type NewTaskClock struct {
 	ClockOut string `json:"clock_out,omitempty"` // ClockOut can be optional
 }
 
+type UpdateTaskSchedule struct {
+    StartDatetime string `json:"start_datetime,omitempty"`
+    EndDatetime   string `json:"end_datetime,omitempty"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
@@ -292,6 +298,7 @@ func serve() {
 	r.HandleFunc("/tasks/details", getTasksWithDetails).Methods("GET")
 	r.HandleFunc("/task_schedules", createTaskSchedule).Methods("POST")
 	r.HandleFunc("/task_clocks", createTaskClock).Methods("POST")
+	r.HandleFunc("/task_schedules/{id}", updateTaskSchedule).Methods("PUT")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -1522,6 +1529,65 @@ func createTaskClock(w http.ResponseWriter, r *http.Request) {
 		"message": "Task clock entry created successfully",
 		"id":      clockID,
 	})
+}
+
+func updateTaskSchedule(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    scheduleID := vars["id"]
+
+    var update UpdateTaskSchedule
+    err := json.NewDecoder(r.Body).Decode(&update)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Start building the SQL query
+    query := "UPDATE task_schedules SET"
+    var args []interface{}
+    var setFields []string
+
+    if update.StartDatetime != "" {
+        args = append(args, update.StartDatetime)
+        setFields = append(setFields, fmt.Sprintf("start_datetime = $%d", len(args)))
+    }
+
+    if update.EndDatetime != "" {
+        args = append(args, update.EndDatetime)
+        setFields = append(setFields, fmt.Sprintf("end_datetime = $%d", len(args)))
+    }
+
+    if len(setFields) == 0 {
+        http.Error(w, "No fields to update", http.StatusBadRequest)
+        return
+    }
+
+    query += " " + strings.Join(setFields, ", ")
+    query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
+    args = append(args, scheduleID)
+
+    // Execute the query
+    result, err := db.Exec(query, args...)
+    if err != nil {
+        log.Printf("Error updating task schedule: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Task schedule not found", http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Task schedule updated successfully"})
 }
 
 // Helper function to check if a string is in a slice
