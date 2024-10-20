@@ -48,6 +48,15 @@ CREATE TABLE note_categories (
     PRIMARY KEY (note_id, category_id)
 );
 
+-- Tags have heirarchy
+CREATE TABLE tag_hierarchy (
+    id SERIAL PRIMARY KEY,
+    parent_tag_id INT REFERENCES tags(id),
+    child_tag_id INT REFERENCES tags(id)
+    -- UNIQUE (child_note_id)  -- Tags can have multiple parents
+);
+
+
 CREATE TABLE note_tags (
     note_id INT REFERENCES notes(id),
     tag_id INT REFERENCES tags(id),
@@ -95,7 +104,8 @@ CREATE TABLE note_hierarchy (
     id SERIAL PRIMARY KEY,
     parent_note_id INT REFERENCES notes(id),
     child_note_id INT REFERENCES notes(id),
-    hierarchy_type TEXT CHECK (hierarchy_type IN ('page', 'block', 'subpage'))
+    hierarchy_type TEXT CHECK (hierarchy_type IN ('page', 'block', 'subpage')),
+    UNIQUE (child_note_id)  -- This enforces that each child note can only have one parent
 );
 
 -- Table for journal/calendar view (optional)
