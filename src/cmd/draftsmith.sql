@@ -115,6 +115,43 @@ CREATE TABLE journal_entries (
     entry_date DATE NOT NULL
 );
 
+
+-- Task Management
+
+-- Track notes as task objects
+
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,                 -- Unique task identifier
+    note_id INT REFERENCES notes(id) ON DELETE CASCADE, -- Link to notes
+    status TEXT CHECK (status IN ('todo', 'done', 'wait', 'hold', 'idea', 'kill', 'proj', 'event')), -- Status of the task
+    effort_estimate NUMERIC,              -- Estimated effort in hours
+    actual_effort NUMERIC,                -- Actual effort in hours
+    deadline TIMESTAMP,                   -- Deadline for the task
+    priority INT CHECK (priority BETWEEN 1 AND 5), -- Priority of the task
+    all_day BOOLEAN DEFAULT FALSE,  -- Flag for all-day events (e.g. Daylight Saving savings on this day)
+    goal_relationship INT CHECK (goal_relationship BETWEEN 1 AND 5) -- Relationship to goals
+);
+
+-- Schedule tasks over certain days
+
+CREATE TABLE task_schedules (
+    id SERIAL PRIMARY KEY,                 -- Unique schedule identifier
+    task_id INT REFERENCES tasks(id) ON DELETE CASCADE, -- Link to tasks
+    start_datetime TIMESTAMP,              -- Scheduled start datetime
+    end_datetime TIMESTAMP                 -- Scheduled end datetime
+);
+
+
+-- Clock Table
+
+CREATE TABLE task_clocks (
+    id SERIAL PRIMARY KEY,                 -- Unique clock identifier
+    task_id INT REFERENCES tasks(id) ON DELETE CASCADE, -- Link to tasks
+    clock_in TIMESTAMP,                    -- Clock in time
+    clock_out TIMESTAMP                    -- Clock out time
+);
+
+
 -- Populate initial data for note types
 INSERT INTO note_types (name, description) VALUES
     ('asset', 'Asset related notes'),
