@@ -4,15 +4,13 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"log"
 
-    utils "draftsmith/src/utils"
+	utils "draftsmith/src/utils"
 	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 //go:embed draftsmith.sql
@@ -30,43 +28,16 @@ This requires the database to be dropped first, use the drop command to do this.
 
 		DB_NAME := "draftsmith"
 
-		// // Get database connection details from viper
-		// dbHost := viper.GetString("db_host")
-		// dbPort := viper.GetInt("db_port")
-		// dbUser := viper.GetString("db_user")
-		// dbPass := viper.GetString("db_pass")
-		//
-		// // Connect to the default postgres database
-		// connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		// 	dbHost, dbPort, dbUser, dbPass, "postgres")
-		//
-		// // Open database connection
-		// db, err := sql.Open("postgres", connStr)
-		// if err != nil {
-		// 	log.Fatalf("Error opening database connection: %v", err)
-		// }
-        db := utils.get_db()
-		defer db.Close()
+        // Create the default Database
+        utils.Create_db()
 
-		// Create the database
-        stmt := fmt.Sprintf("CREATE DATABASE %s", DB_NAME)
-		_, err = db.Exec(stmt) // TODO parameterize
-		if err != nil {
-			log.Fatalf("Error creating database: %v", err)
-		}
-
-		// Connect to the new database
-		connStr = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			dbHost, dbPort, dbUser, dbPass, DB_NAME)
-		db, err = sql.Open("postgres", connStr)
-		if err != nil {
-			log.Fatalf("Error opening database connection: %v", err)
-		}
-		defer db.Close()
+        // Connect to the new database
+        db = utils.Get_db(DB_NAME)
+        defer db.Close()
 
 		// Execute SQL commands
 		fmt.Println(sql_commands)
-		_, err = db.Exec(sql_commands)
+        _, err := db.Exec(sql_commands)
 		if err != nil {
 			log.Fatalf("Error executing SQL commands: %v", err)
 		}
