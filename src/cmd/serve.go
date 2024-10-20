@@ -47,6 +47,11 @@ type Tag struct {
     Name string `json:"name"`
 }
 
+// AddTagToNote represents the structure for adding a tag to a note
+type AddTagToNote struct {
+    TagID int `json:"tag_id"`
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -94,6 +99,7 @@ func serve() {
 	r.HandleFunc("/notes", createNote).Methods("POST")
 	r.HandleFunc("/tags", createTag).Methods("POST")
 	r.HandleFunc("/tags", listTags).Methods("GET")
+	r.HandleFunc("/notes/{id}/tags", addTagToNote).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -228,4 +234,26 @@ func createTag(w http.ResponseWriter, r *http.Request) {
         "message": "Tag created successfully",
         "id":      tagID,
     })
+}
+
+func addTagToNote(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    noteID := vars["id"]
+
+    var addTag AddTagToNote
+    err := json.NewDecoder(r.Body).Decode(&addTag)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    _, err = db.Exec("INSERT INTO note_tags (note_id, tag_id) VALUES ($1, $2)", noteID, addTag.TagID)
+    if err != nil {
+        log.Printf("Error adding tag to note: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Tag added to note successfully"})
 }
