@@ -12,7 +12,7 @@ See the PyQt6 GUI implementation [here (TODO)] and the Neovim Extension [here (T
 
 It is designed to be a simple, fast, and reliable way to take notes, whilst remaining feature complete and open source.
 
-## Usage
+## Installation
 
 
 1. Clone the repository
