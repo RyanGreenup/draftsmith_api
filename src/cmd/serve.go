@@ -155,6 +155,7 @@ type NewCategory struct {
 type NoteHierarchyEntry struct {
 	ParentNoteID  int    `json:"parent_note_id"`
 	HierarchyType string `json:"hierarchy_type"`
+    ChildNoteID   int    `json:"child_note_id"`
 }
 
 // serveCmd represents the serve command
@@ -464,6 +465,7 @@ func addNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate hierarchy_type
+    // TODO is this necessary if the DB will handle it?
 	if entry.HierarchyType != "page" && entry.HierarchyType != "block" && entry.HierarchyType != "subpage" {
 		http.Error(w, "Invalid hierarchy_type. Must be 'page', 'block', or 'subpage'", http.StatusBadRequest)
 		return
@@ -899,7 +901,7 @@ func updateNoteHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     // Update the existing entry
     result, err := db.Exec(`
-        UPDATE note_hierarchy 
+        UPDATE note_hierarchy
         SET parent_note_id = $1, hierarchy_type = $2
         WHERE child_note_id = $3
     `, entry.ParentNoteID, entry.HierarchyType, childNoteID)
