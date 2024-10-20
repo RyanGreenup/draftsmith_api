@@ -204,6 +204,7 @@ func serve() {
 	r.HandleFunc("/notes", getNoteTitles).Methods("GET")
 	r.HandleFunc("/notes/{id}", updateNote).Methods("PUT")
 	r.HandleFunc("/notes", createNote).Methods("POST")
+	r.HandleFunc("/notes/{id}", deleteNote).Methods("DELETE")
 	r.HandleFunc("/tags", createTag).Methods("POST")
 	r.HandleFunc("/tags", listTags).Methods("GET")
 	r.HandleFunc("/notes/{id}/tags", addTagToNote).Methods("POST")
@@ -1091,6 +1092,74 @@ func updateTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry updated successfully"})
+}
+
+func deleteNote(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    noteID := vars["id"]
+
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Delete related entries in note_tags
+    _, err = tx.Exec("DELETE FROM note_tags WHERE note_id = $1", noteID)
+    if err != nil {
+        log.Printf("Error deleting from note_tags: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Delete related entries in note_categories
+    _, err = tx.Exec("DELETE FROM note_categories WHERE note_id = $1", noteID)
+    if err != nil {
+        log.Printf("Error deleting from note_categories: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Delete related entries in note_hierarchy
+    _, err = tx.Exec("DELETE FROM note_hierarchy WHERE parent_note_id = $1 OR child_note_id = $1", noteID)
+    if err != nil {
+        log.Printf("Error deleting from note_hierarchy: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Delete the note
+    result, err := tx.Exec("DELETE FROM notes WHERE id = $1", noteID)
+    if err != nil {
+        log.Printf("Error deleting note: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("Error getting rows affected: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "Note not found", http.StatusNotFound)
+        return
+    }
+
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Note deleted successfully"})
 }
 
 func detectCycle(parents, children []int) bool {
