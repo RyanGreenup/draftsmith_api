@@ -1357,9 +1357,9 @@ func deleteTask(w http.ResponseWriter, r *http.Request) {
 func getTasksWithDetails(w http.ResponseWriter, r *http.Request) {
     // Query to get tasks with their schedules and clocks
     query := `
-        SELECT 
-            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort, 
-            t.deadline, t.priority, t.all_day, t.goal_relationship, 
+        SELECT
+            t.id, t.note_id, t.status, t.effort_estimate, t.actual_effort,
+            t.deadline, t.priority, t.all_day, t.goal_relationship,
             t.created_at, t.modified_at,
             ts.id, ts.start_datetime, ts.end_datetime,
             tc.id, tc.clock_in, tc.clock_out
@@ -1478,7 +1478,8 @@ func createTaskSchedule(w http.ResponseWriter, r *http.Request) {
 
 func createTaskClock(w http.ResponseWriter, r *http.Request) {
     var newClock NewTaskClock
-    err := json.NewDecoder(r.Body).Decode(&newClock)
+    var err error
+    err = json.NewDecoder(r.Body).Decode(&newClock)
     if err != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
         return
@@ -1496,7 +1497,6 @@ func createTaskClock(w http.ResponseWriter, r *http.Request) {
 
     // Insert the new clock entry
     var clockID int
-    var err error
     if newClock.ClockOut == "" {
         err = db.QueryRow(`
             INSERT INTO task_clocks (task_id, clock_in)
