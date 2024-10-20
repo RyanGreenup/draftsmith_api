@@ -52,6 +52,12 @@ type AddTagToNote struct {
     TagID int `json:"tag_id"`
 }
 
+// TagHierarchyEntry represents the structure for adding a tag hierarchy entry
+type TagHierarchyEntry struct {
+    ParentTagID int `json:"parent_tag_id"`
+    ChildTagID  int `json:"child_tag_id"`
+}
+
 // Category represents a category structure
 type Category struct {
     ID   int    `json:"id"`
@@ -121,6 +127,7 @@ func serve() {
 	r.HandleFunc("/categories", listCategories).Methods("GET")
 	r.HandleFunc("/categories", createCategory).Methods("POST")
 	r.HandleFunc("/notes/hierarchy", addNoteHierarchyEntry).Methods("POST")
+	r.HandleFunc("/tags/hierarchy", addTagHierarchyEntry).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -201,6 +208,35 @@ func createNote(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]interface{}{
         "message": "Note created successfully",
         "id":      noteID,
+    })
+}
+
+func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
+    var entry TagHierarchyEntry
+    err := json.NewDecoder(r.Body).Decode(&entry)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new tag hierarchy entry
+    var entryID int
+    err = db.QueryRow(`
+        INSERT INTO tag_hierarchy (parent_tag_id, child_tag_id)
+        VALUES ($1, $2)
+        RETURNING id
+    `, entry.ParentTagID, entry.ChildTagID).Scan(&entryID)
+
+    if err != nil {
+        log.Printf("Error adding tag hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "Tag hierarchy entry added successfully",
+        "id":      entryID,
     })
 }
 

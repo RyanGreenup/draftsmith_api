@@ -54,6 +54,14 @@ CREATE TABLE note_tags (
     PRIMARY KEY (note_id, tag_id)
 );
 
+-- Table for tag hierarchy
+CREATE TABLE tag_hierarchy (
+    id SERIAL PRIMARY KEY,
+    parent_tag_id INT REFERENCES tags(id),
+    child_tag_id INT REFERENCES tags(id),
+    UNIQUE(parent_tag_id, child_tag_id)
+);
+
 -- Table for assets
 CREATE TABLE assets (
     id SERIAL PRIMARY KEY,
