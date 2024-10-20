@@ -58,11 +58,17 @@ type TagHierarchyEntry struct {
     ChildTagID  int `json:"child_tag_id"`
 }
 
+// NoteInfo represents basic note information
+type NoteInfo struct {
+    ID    int    `json:"id"`
+    Title string `json:"title"`
+}
+
 // TagTree represents a tag and its children in a tree structure
 type TagTree struct {
-    ID       int        `json:"id"`
-    Name     string     `json:"name"`
-    NoteIDs  []int      `json:"note_ids"`
+    ID    int        `json:"id"`
+    Name  string     `json:"name"`
+    Notes []NoteInfo `json:"notes"`
     Children []*TagTree `json:"children,omitempty"`
 }
 
@@ -263,10 +269,14 @@ func getTagTree(w http.ResponseWriter, r *http.Request) {
         parent.Children = append(parent.Children, child)
     }
 
-    // Get note IDs for each tag
-    rows, err = db.Query("SELECT tag_id, note_id FROM note_tags")
+    // Get notes for each tag
+    rows, err = db.Query(`
+        SELECT nt.tag_id, n.id, n.title 
+        FROM note_tags nt 
+        JOIN notes n ON nt.note_id = n.id
+    `)
     if err != nil {
-        log.Printf("Error querying note tags: %v", err)
+        log.Printf("Error querying notes for tags: %v", err)
         http.Error(w, "Internal server error", http.StatusInternalServerError)
         return
     }
@@ -274,13 +284,14 @@ func getTagTree(w http.ResponseWriter, r *http.Request) {
 
     for rows.Next() {
         var tagID, noteID int
-        if err := rows.Scan(&tagID, &noteID); err != nil {
-            log.Printf("Error scanning note tag row: %v", err)
+        var noteTitle string
+        if err := rows.Scan(&tagID, &noteID, &noteTitle); err != nil {
+            log.Printf("Error scanning note info row: %v", err)
             http.Error(w, "Internal server error", http.StatusInternalServerError)
             return
         }
         if tag, ok := tagMap[tagID]; ok {
-            tag.NoteIDs = append(tag.NoteIDs, noteID)
+            tag.Notes = append(tag.Notes, NoteInfo{ID: noteID, Title: noteTitle})
         }
     }
 
