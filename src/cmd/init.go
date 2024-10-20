@@ -35,8 +35,10 @@ This requires the database to be dropped first, use the drop command to do this.
 		dbName := viper.GetString("db_name")
 
 		// Create connection string
-		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable",
+		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			dbHost, dbPort, dbUser, dbPass, dbName)
+
+		fmt.Printf("Debug: Connection string: %s\n", connStr)
 
 		// Open database connection
 		db, err := sql.Open("postgres", connStr)
