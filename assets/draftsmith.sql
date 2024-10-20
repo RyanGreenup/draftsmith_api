@@ -16,6 +16,8 @@ CREATE TABLE notes (
     fts tsvector GENERATED ALWAYS AS (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(content,''))) STORED
 );
 
+CREATE INDEX notes_fts_idx ON notes USING gin(fts);
+
 -- Table to store modified dates
 CREATE TABLE note_modifications (
     note_id INT REFERENCES notes(id),
