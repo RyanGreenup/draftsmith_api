@@ -19,6 +19,9 @@ var db *sql.DB
 type Note struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
+    Content string `json:"content"`
+    Created_at string `json:"created_at"`
+    Modified_at string `json:"modified_at"`
 }
 
 // NoteUpdate represents the structure for updating a note
@@ -75,7 +78,7 @@ func serve() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/titles", getNoteTitles).Methods("GET")
+	r.HandleFunc("/notes", getNoteTitles).Methods("GET")
 	r.HandleFunc("/notes/{id}", updateNote).Methods("PUT")
 	r.HandleFunc("/notes", createNote).Methods("POST")
 
@@ -85,7 +88,7 @@ func serve() {
 }
 
 func getNoteTitles(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT id, title FROM notes")
+	rows, err := db.Query("SELECT id, title, content, created_at, modified_at FROM notes")
 	if err != nil {
 		log.Printf("Error querying database: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -96,7 +99,7 @@ func getNoteTitles(w http.ResponseWriter, r *http.Request) {
 	var notes []Note
 	for rows.Next() {
 		var n Note
-		if err := rows.Scan(&n.ID, &n.Title); err != nil {
+		if err := rows.Scan(&n.ID, &n.Title, &n.Content, &n.Created_at, &n.Modified_at); err != nil {
 			log.Printf("Error scanning row: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
