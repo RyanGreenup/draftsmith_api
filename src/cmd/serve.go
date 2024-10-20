@@ -1114,3 +1114,77 @@ func detectCycle(parents, children []int) bool {
 
     return false
 }
+
+func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
+    var entry struct {
+        ParentTagID int `json:"parent_tag_id"`
+        ChildTagID  int `json:"child_tag_id"`
+    }
+    err := json.NewDecoder(r.Body).Decode(&entry)
+    if err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Fetch all existing hierarchies
+    rows, err := tx.Query("SELECT parent_tag_id, child_tag_id FROM tag_hierarchy")
+    if err != nil {
+        log.Printf("Error fetching tag hierarchies: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var parents, children []int
+    for rows.Next() {
+        var parent, child int
+        if err := rows.Scan(&parent, &child); err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        parents = append(parents, parent)
+        children = append(children, child)
+    }
+
+    // Add the new relationship to check
+    parents = append(parents, entry.ParentTagID)
+    children = append(children, entry.ChildTagID)
+
+    // Check for cycles
+    if detectCycle(parents, children) {
+        http.Error(w, "Operation would create a cycle in the hierarchy", http.StatusBadRequest)
+        return
+    }
+
+    // Insert the new entry
+    _, err = tx.Exec(`
+        INSERT INTO tag_hierarchy (parent_tag_id, child_tag_id)
+        VALUES ($1, $2)
+    `, entry.ParentTagID, entry.ChildTagID)
+
+    if err != nil {
+        log.Printf("Error inserting tag hierarchy entry: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry added successfully"})
+}
