@@ -105,6 +105,17 @@ type NewTask struct {
     GoalRelationship int     `json:"goal_relationship"`
 }
 
+// UpdateTask represents the structure for updating an existing task
+type UpdateTask struct {
+    Status           *string  `json:"status,omitempty"`
+    EffortEstimate   *float64 `json:"effort_estimate,omitempty"`
+    ActualEffort     *float64 `json:"actual_effort,omitempty"`
+    Deadline         *string  `json:"deadline,omitempty"`
+    Priority         *int     `json:"priority,omitempty"`
+    AllDay           *bool    `json:"all_day,omitempty"`
+    GoalRelationship *int     `json:"goal_relationship,omitempty"`
+}
+
 func searchNotes(w http.ResponseWriter, r *http.Request) {
     query := r.URL.Query().Get("q")
     if query == "" {
