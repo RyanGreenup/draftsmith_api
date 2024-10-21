@@ -28,19 +28,14 @@ docker compose up
 curl http://localhost:37238/notes/tree | jq
 ```
 
-## Development
+## Related Software
 
-Use [PostgreSQL-Browser for Browsing the Database](https://github.com/RyanGreenup/PostgreSQL-Browser).
-
-Create the database:
-
-```sh
-PGPASSWORD=postgres \
-    psql -h localhost -p 5432 -U postgres -f ./src/cmd/draftsmith.psql
-pg_browser postgres  --host localhost --password postgres --username postgres --port 5432
-```
-
-
+- [PostgreSQL-Browser for Browsing the Database](https://github.com/RyanGreenup/PostgreSQL-Browser).
+- Neovim Extension (TODO)
+- PyQt6 GUI (TODO)
+    - [Draftsmith](https://github.com/RyanGreenup/draftsmith_api)
+        - This is still file based, migration toward the API is under way [Draftsmith QT /  Move toward REST API with PostgresQL backend #1 ](https://github.com/RyanGreenup/Draftsmith/issues/1)
+- Flask Server (TODO)
 
 
 ## Footnotes
