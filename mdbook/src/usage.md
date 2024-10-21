@@ -655,6 +655,10 @@ curl -X PUT http://localhost:37238/notes/hierarchy/4 \
       -H "Content-Type: application/json" \
       -d '{"parent_note_id": 2, "hierarchy_type": "subpage"}'
 ```
+```
+j"message":"Note hierarchy entry updated successfully"}
+```
+
 
 ##### Delete
 A note can only have one parent, so deleting a hierarchy tags the child tag as an argument.
@@ -839,6 +843,10 @@ curl -X POST http://localhost:37238/tags/hierarchy \
   -d '{"parent_tag_id": 10, "child_tag_id": 5}'
 
 ```
+```json
+{"message":"Tag hierarchy entry added successfully"}
+```
+
 ##### Update
 ```sh
 curl -X PUT http://localhost:37238/tags/hierarchy/5 \
@@ -972,6 +980,34 @@ curl -X DELETE http://localhost:37238/tasks/1
 ```
 
 ##### Get (tree)
+```sh
+curl http://localhost:37238/tasks/tree | jq
+```
+
+```
+[
+  {
+    "id": 1,
+    "title": "First note",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Second note",
+        "type": "block",
+        "children": [
+          {
+            "id": 3,
+            "title": "Third note",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
 ##### Get (flat)
 The Get method returns tasks as a json like so:
 
@@ -1071,12 +1107,12 @@ This is handled by the task endpoint, as above.
 ##### Create
 ```bash
 
-curl -X POST http://localhost:37238/task_schedules \
+curl -X POST http://localhost:37238/task_clocks \
  -H "Content-Type: application/json" \
  -d '{
      "task_id": 2,
-     "start_datetime": "2023-06-01T09:00:00Z",
-     "end_datetime": "2023-06-01T17:00:00Z"
+     "clock_in": "2023-06-01T09:00:00Z",
+     "clock_out": "2023-06-01T17:00:00Z"
  }'
 
 ```
