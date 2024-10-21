@@ -54,7 +54,7 @@ curl http://localhost:37238/notes/tree | jq
 
 2. **CLI Client**
    - Install Python and dependencies.
-       - `pipx install --force  https://github.com/RyanGreenup/draftsmith_cli`
+       - `pipx install git+https://github.com/RyanGreenup/draftsmith_cli --force`
 
 3. [**PyQt GUI**](https://github.com/RyanGreenup/draftsmith)
    - `pipx install https://github.com/RyanGreenup/draftsmith`
