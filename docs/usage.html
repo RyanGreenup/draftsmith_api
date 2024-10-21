@@ -435,7 +435,7 @@ Delete</li>
 Get</li>
 <li><input disabled="" type="checkbox" checked=""/>
 Search</li>
-<li>Heirarchy
+<li>hierarchy
 <ul>
 <li><input disabled="" type="checkbox"/>
 Create</li>
@@ -468,7 +468,7 @@ Search
 <li>Search notes assigned to a tag</li>
 </ul>
 </li>
-<li>Heirarchy
+<li>hierarchy
 <ul>
 <li><input disabled="" type="checkbox"/>
 Create</li>
@@ -564,8 +564,8 @@ fts         | 'content':7 'new':1,10 'note':2,11 'titl':3
 
 draftsmith=#
 </code></pre>
-<h5 id="heirarchy"><a class="header" href="#heirarchy">Heirarchy</a></h5>
-<p>There is a table <code>note_heirarchy</code> that stores the heirarchy of notes. The <code>hierarchy_type</code> column can be <code>subpage</code> or <code>section</code>:</p>
+<h5 id="hierarchy"><a class="header" href="#hierarchy">hierarchy</a></h5>
+<p>There is a table <code>note_hierarchy</code> that stores the hierarchy of notes. The <code>hierarchy_type</code> column can be <code>subpage</code> or <code>section</code>:</p>
 <pre><code>select * from note_hierarchy;
  id | parent_note_id | child_note_id | hierarchy_type
 ----+----------------+---------------+----------------
@@ -682,7 +682,7 @@ print(json.dumps(output, indent=2))
   }
 ]
 </code></pre>
-<h4 id="heirarchy-1"><a class="header" href="#heirarchy-1">Heirarchy</a></h4>
+<h4 id="hierarchy-1"><a class="header" href="#hierarchy-1">hierarchy</a></h4>
 <h5 id="examples"><a class="header" href="#examples">Examples</a></h5>
 <p>Consider some notes:</p>
 <pre><code class="language-sh">curl localhost:37238/notes/tree | jq
@@ -1010,13 +1010,13 @@ curl http://localhost:37238/notes/tree | jq
 <pre><code class="language-json">{"id":2,"message":"Note hierarchy entry added successfully"}
 </code></pre>
 <h5 id="update-1"><a class="header" href="#update-1">Update</a></h5>
-<p>Clients should use the update endpoint to change the type of heirarchy (e.g. from <code>subpage</code> to <code>section</code>) or to change the parent note. This is better than add and delete because it is atomic (and only one request is needed).</p>
+<p>Clients should use the update endpoint to change the type of hierarchy (e.g. from <code>subpage</code> to <code>section</code>) or to change the parent note. This is better than add and delete because it is atomic (and only one request is needed).</p>
 <pre><code class="language-sh">curl -X PUT http://localhost:37238/notes/hierarchy/4 \
       -H "Content-Type: application/json" \
       -d '{"parent_note_id": 2, "hierarchy_type": "subpage"}'
 </code></pre>
 <h5 id="delete-1"><a class="header" href="#delete-1">Delete</a></h5>
-<p>A note can only have one parent, so deleting a heirarchy tags the child tag as an argument.</p>
+<p>A note can only have one parent, so deleting a hierarchy tags the child tag as an argument.</p>
 <p>For example to remove to from whatever parent it has:</p>
 <pre><code class="language-sh">curl -X DELETE http://localhost:37238/notes/hierarchy/2
 </code></pre>
@@ -1158,7 +1158,7 @@ curl http://localhost:37238/notes/tree | jq
 <p>For large corpuses it could be more efficient to postgres to do this, but for small corpuses it is not worth the overhead.</p>
 <h5 id="filter"><a class="header" href="#filter">Filter</a></h5>
 <p>This is not implemented, but the client can use <code>fzf</code> to filter tags. It is not implemented because server latency will make it slow for palettes etc., particularly over, e.g. wireguard / tailscale.</p>
-<h4 id="hierarchy"><a class="header" href="#hierarchy">Hierarchy</a></h4>
+<h4 id="hierarchy-2"><a class="header" href="#hierarchy-2">Hierarchy</a></h4>
 <h5 id="create-3"><a class="header" href="#create-3">Create</a></h5>
 <pre><code class="language-sh">curl -X POST http://localhost:37238/tags/hierarchy \
   -H "Content-Type: application/json" \
@@ -1268,7 +1268,8 @@ curl http://localhost:37238/notes/tree | jq
 </code></pre>
 <pre><code class="language-json">{"message":"Task deleted successfully"}
 </code></pre>
-<h5 id="get-2"><a class="header" href="#get-2">Get</a></h5>
+<h5 id="get-tree-2"><a class="header" href="#get-tree-2">Get (tree)</a></h5>
+<h5 id="get-flat"><a class="header" href="#get-flat">Get (flat)</a></h5>
 <p>The Get method returns tasks as a json like so:</p>
 <pre><code class="language-bash">curl http://localhost:37238/tasks/details | jq
 </code></pre>
@@ -1347,7 +1348,7 @@ curl http://localhost:37238/notes/tree | jq
 </code></pre>
 <pre><code class="language-json">{"message":"Task schedule deleted successfully"}
 </code></pre>
-<h5 id="get-3"><a class="header" href="#get-3">Get</a></h5>
+<h5 id="get-2"><a class="header" href="#get-2">Get</a></h5>
 <p>This is handled by the task endpoint, as above.</p>
 <h4 id="clock-in"><a class="header" href="#clock-in">Clock In</a></h4>
 <h5 id="create-6"><a class="header" href="#create-6">Create</a></h5>
@@ -1374,11 +1375,11 @@ curl -X POST http://localhost:37238/task_schedules \
 </code></pre>
 <pre><code class="language-json">{"message":"Task clock entry deleted successfully"}
 </code></pre>
-<h5 id="get-4"><a class="header" href="#get-4">Get</a></h5>
+<h5 id="get-3"><a class="header" href="#get-3">Get</a></h5>
 <p>This is handled by the task endpoint, as above.</p>
 <h3 id="categories"><a class="header" href="#categories">Categories</a></h3>
 <p>Categories were abandoned in favor of tags. They are not implemented. There may be some leftover endpoints, these will be removed.</p>
-<h4 id="get-5"><a class="header" href="#get-5">Get</a></h4>
+<h4 id="get-4"><a class="header" href="#get-4">Get</a></h4>
 <pre><code class="language-sh">curl http://localhost:37238/categories | jq
 </code></pre>
 <pre><code class="language-json">[
@@ -1417,13 +1418,124 @@ curl -X POST http://localhost:37238/task_schedules \
 
 
 </code></pre>
-<h4 id="assign-heirarchy"><a class="header" href="#assign-heirarchy">Assign Heirarchy</a></h4>
+<h4 id="assign-hierarchy"><a class="header" href="#assign-hierarchy">Assign hierarchy</a></h4>
 <pre><code class="language-sh">curl -X POST http://localhost:37238/tags/hierarchy \
       -H "Content-Type: application/json" \
       -d '{"parent_tag_id": 1, "child_tag_id": 2}'
 </code></pre>
 <pre><code class="language-json">{"id":4,"message":"Tag hierarchy entry added successfully"}
 </code></pre>
+<h2 id="examples-1"><a class="header" href="#examples-1">Examples</a></h2>
+<h3 id="task-hierarchy"><a class="header" href="#task-hierarchy">Task hierarchy</a></h3>
+<p>Consider the following list of tasks:</p>
+<pre><code class="language-sh">curl http://localhost:37238/tasks/details | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 2,
+    "note_id": 1,
+    "status": "todo",
+    "effort_estimate": 2.5,
+    "actual_effort": 0,
+    "deadline": "2023-06-30T15:00:00Z",
+    "priority": 3,
+    "all_day": false,
+    "goal_relationship": 4,
+    "created_at": "2024-10-20T10:31:58.269465Z",
+    "modified_at": "2024-10-20T10:31:58.269465Z",
+    "schedules": null,
+    "clocks": null
+  },
+  {
+    "id": 7,
+    "note_id": 4,
+    "status": "todo",
+    "effort_estimate": 2.5,
+    "actual_effort": 0,
+    "deadline": "2023-06-30T15:00:00Z",
+    "priority": 3,
+    "all_day": false,
+    "goal_relationship": 4,
+    "created_at": "2024-10-20T10:33:04.594991Z",
+    "modified_at": "2024-10-20T10:33:04.594991Z",
+    "schedules": null,
+    "clocks": [
+      {
+        "id": 2,
+        "clock_in": "2023-05-20T09:00:00Z",
+        "clock_out": "2023-05-20T17:00:00Z"
+      }
+    ]
+  }
+]
+</code></pre>
+<p>If the note_hierarchy table looks like this:</p>
+<pre><code class="language-sql">select * from note_hierarchy;
+</code></pre>
+<pre><code> id | parent_note_id | child_note_id | hierarchy_type
+----+----------------+---------------+----------------
+ 26 |              1 |             2 | subpage
+ 27 |              2 |             3 | subpage
+ 28 |              2 |             4 | subpage
+(3 rows)
+</code></pre>
+<p>The hierarchy would appear like so:</p>
+<pre><code class="language-bash">curl http://localhost:37238/notes/tree | jq | x
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 3,
+            "title": "Foo",
+            "type": "subpage"
+          },
+          {
+            "id": 4,
+            "title": "New Note Title",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<p>Please be aware that <code>note_id: 2</code> is not a task itself, it will be included in the task tree to remain consistent with the <code>note_hierarchy</code> table, which remains valid for all trees.</p>
+<pre><code class="language-bash">curl http://localhost:37238/tasks/tree | jq
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "id": 1,
+    "title": "New Title",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Foo",
+        "type": "subpage",
+        "children": [
+          {
+            "id": 4,
+            "title": "New Note Title",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
+<p>This could change in the future, where <code>note_id: 2</code> would be excluded from the output, and <code>id 4</code> would be directly linked as a child of <code>id 1</code>. Clients are encouraged to evaluate whether to maintain notes interspersed between tasks within the hierarchy.</p>
+<p>Note also that the id here is the <code>note_id</code> rather than the <code>task_id</code>. This likely will change.</p>
 
                     </main>
 

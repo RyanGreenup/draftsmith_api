@@ -4,7 +4,7 @@
 
 1. Clone the repository
     ```sh
-    git clone TODO
+    git clone https://github.com/RyanGreenup/draftsmith_api
     ```
 2. Start the Docker Container
 
@@ -91,6 +91,25 @@ done
 exec /app/draftsmith_api
 
 ```
+
+### Initializing the Database
+
+Create the database:
+
+```sh
+PGPASSWORD=postgres \
+    psql -h localhost -p 5432 -U postgres -f ./src/cmd/draftsmith.psql
+pg_browser postgres  --host localhost --password postgres --username postgres --port 5432
+```
+
+Alternatively the go binary can be used to initialize the database:
+
+```sh
+./draftsmith_api --db_host=db cli init
+```
+
+See also [PostgreSQL-Browser for Browsing the Database](https://github.com/RyanGreenup/PostgreSQL-Browser).
+
 
 ## Footnotes
 

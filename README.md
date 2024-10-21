@@ -14,18 +14,19 @@ It is designed to be a simple, fast, and reliable way to take notes, whilst rema
 
 ## Installation
 
+Installation is supported via docker (although it is possible to run the server locally). See the [installation documentation](https://ryangreenup.github.io/draftsmith_api/installation.html) for more information:
 
-1. Clone the repository
-    ```sh
-    git clone TODO
-    ```
-2. Start the Docker Container
 
-    ```sh
-    docker-compose up
-    ```
-
-The binary is embedded in the docker container, which automatically starts the server on port `37238` [^1729388462]
+```sh
+git clone https://github.com/RyanGreenup/draftsmith_api
+docker compose build
+docker compose up db -d
+sleep 5  # wait for db to start
+docker compose run app ./draftsmith_api --db_host=db cli init
+docker compose down
+docker compose up
+curl http://localhost:37238/notes/tree | jq
+```
 
 ## Development
 

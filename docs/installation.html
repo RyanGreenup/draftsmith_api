@@ -420,7 +420,7 @@
 <ol>
 <li>
 <p>Clone the repository</p>
-<pre><code class="language-sh">git clone TODO
+<pre><code class="language-sh">git clone https://github.com/RyanGreenup/draftsmith_api
 </code></pre>
 </li>
 <li>
@@ -430,6 +430,86 @@
 </li>
 </ol>
 <p>The binary is embedded in the docker container, which automatically starts the server on port <code>37238</code> <sup class="footnote-reference"><a href="#1729388462">1</a></sup></p>
+<ol>
+<li>
+<p>Clone the Repository</p>
+<pre><code class="language-sh">git clone TODO
+</code></pre>
+</li>
+<li>
+<p>Initialize the Database</p>
+<pre><code class="language-bash"># Build the containers
+docker compose build
+docker compose up db -d
+sleep 5  # wait for db to start
+
+# Populate the database
+docker compose run app ./draftsmith_api --db_host=db cli init
+docker compose down
+
+# Start the server
+docker compose up
+
+# Test the server
+curl http://localhost:37238/notes/tree | jq
+</code></pre>
+</li>
+</ol>
+<p>After that, it is sufficient to run <code>docker compose up</code> to start the server.</p>
+<h2 id="updating"><a class="header" href="#updating">Updating</a></h2>
+<ol>
+<li>
+<p>Git Pull</p>
+</li>
+<li>
+<p>Rebuild the Docker Container</p>
+<pre><code class="language-sh">docker compose build
+</code></pre>
+</li>
+<li>
+<p>Restart the Docker Container</p>
+<pre><code class="language-sh">docker compose up
+</code></pre>
+</li>
+</ol>
+<h2 id="debugging"><a class="header" href="#debugging">Debugging</a></h2>
+<h3 id="enter-the-container"><a class="header" href="#enter-the-container">Enter the container</a></h3>
+<p>To jump into the container and have a look around, you can use the following command:</p>
+<pre><code class="language-sh">docker compose down
+docker compose up db -d
+docker compose run app tail -f /dev/null -d
+docker compose exec app sh
+</code></pre>
+<p>This will start the database and the application, and then open a shell in the container.</p>
+<h3 id="entry-point-script"><a class="header" href="#entry-point-script">Entry Point Script</a></h3>
+<p>Here is an entrypoint script that can be used to wait for the database to be ready before starting the application:</p>
+<pre><code class="language-sh">#!/bin/bash
+
+# A command to wait for the database to be ready
+until psql -h "db" -U "postgres" -c '\q'; do
+  &gt;&amp;2 echo "Postgres is unavailable - sleeping"
+  sleep 1
+done
+
+&gt;&amp;2 echo "Postgres is up - executing command"
+
+# Now run the actual application setup command
+./draftsmith_api --db_host=db cli init
+
+# Finally start the main application
+exec /app/draftsmith_api
+
+</code></pre>
+<h3 id="initializing-the-database"><a class="header" href="#initializing-the-database">Initializing the Database</a></h3>
+<p>Create the database:</p>
+<pre><code class="language-sh">PGPASSWORD=postgres \
+    psql -h localhost -p 5432 -U postgres -f ./src/cmd/draftsmith.psql
+pg_browser postgres  --host localhost --password postgres --username postgres --port 5432
+</code></pre>
+<p>Alternatively the go binary can be used to initialize the database:</p>
+<pre><code class="language-sh">./draftsmith_api --db_host=db cli init
+</code></pre>
+<p>See also <a href="https://github.com/RyanGreenup/PostgreSQL-Browser">PostgreSQL-Browser for Browsing the Database</a>.</p>
 <h2 id="footnotes"><a class="header" href="#footnotes">Footnotes</a></h2>
 <div class="footnote-definition" id="1729388462"><sup class="footnote-definition-label">1</sup>
 <p>This has a mnemonic:</p>
