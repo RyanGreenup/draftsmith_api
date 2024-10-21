@@ -36,6 +36,9 @@ curl http://localhost:37238/notes/tree | jq
     - [Draftsmith](https://github.com/RyanGreenup/draftsmith_api)
         - This is still file based, migration toward the API is under way [Draftsmith QT /  Move toward REST API with PostgresQL backend #1 ](https://github.com/RyanGreenup/Draftsmith/issues/1)
 - Flask Server (TODO)
+- CLI
+    - [Draftsmith CLI](https://github.com/RyanGreenup/draftsmith_cli)
+        - This is a basic CLI that implements a Python API Client and exposes some basic functionality through a Typer CLI
 
 
 ## Footnotes
