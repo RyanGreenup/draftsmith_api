@@ -40,6 +40,7 @@ Installation is supported via docker (although it is possible to run the server 
 
 ```sh
 git clone https://github.com/RyanGreenup/draftsmith_api
+cd draftsmith_api
 docker compose build
 docker compose up db -d
 sleep 5  # wait for db to start
