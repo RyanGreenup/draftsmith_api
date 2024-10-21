@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go_app
+    ports:
+      - "37238:37238"
+    environment:
+      GO_ENV: production
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - db
+    # entrypoint: /app/src/docker_entrypoint.sh
+  db:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data/pgdata
+    # ports:
+    #   - 5432:5432
+

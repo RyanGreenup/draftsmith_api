@@ -186,4 +186,17 @@ INSERT INTO attributes (name, description) VALUES
 -- Populate initial data for notes
 INSERT INTO notes (title, content) VALUES
     ('First note', 'This is the first note in the system.'),
-    ('Second note', 'This is the second note in the system.');
+    ('Second note', 'This is the second note in the system.'),
+    ('Third note', 'Note Number Three.');
+
+
+-- Populate some hierarchy data
+INSERT INTO note_hierarchy (parent_note_id, child_note_id, hierarchy_type) VALUES
+    (1, 2, 'block'),
+    (2, 3, 'block');
+
+-- Populate some task data
+INSERT INTO tasks (note_id, status, effort_estimate, actual_effort, deadline, priority, all_day, goal_relationship) VALUES
+    (1, 'todo', 1.5, 0, '2021-12-31 23:59:59', 3, FALSE, 3),
+    (2, 'done', 0.5, 0.5, '2021-12-31 23:59:59', 2, FALSE, 2),
+    (3, 'todo', 2, 0, '2021-12-31 23:59:59', 1, FALSE, 1);
