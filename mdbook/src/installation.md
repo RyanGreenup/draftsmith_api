@@ -6,18 +6,6 @@
     ```sh
     git clone https://github.com/RyanGreenup/draftsmith_api
     ```
-2. Start the Docker Container
-
-    ```sh
-    docker-compose up
-    ```
-
-The binary is embedded in the docker container, which automatically starts the server on port `37238` [^1729388462]
-1. Clone the Repository
-
-    ```sh
-    git clone TODO
-    ```
 
 2. Initialize the Database
 

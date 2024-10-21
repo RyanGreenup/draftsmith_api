@@ -669,19 +669,6 @@
 </code></pre>
 </li>
 <li>
-<p>Start the Docker Container</p>
-<pre><code class="language-sh">docker-compose up
-</code></pre>
-</li>
-</ol>
-<p>The binary is embedded in the docker container, which automatically starts the server on port <code>37238</code> <sup class="footnote-reference"><a href="#1729388462">1</a></sup></p>
-<ol>
-<li>
-<p>Clone the Repository</p>
-<pre><code class="language-sh">git clone TODO
-</code></pre>
-</li>
-<li>
 <p>Initialize the Database</p>
 <pre><code class="language-bash"># Build the containers
 docker compose build
@@ -1007,9 +994,50 @@ pg_browser postgres  --host localhost --password postgres --username postgres --
 <h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <h2 id="start-the-server"><a class="header" href="#start-the-server">Start the Server:</a></h2>
 <p>First, start the server:</p>
-<pre><code class="language-sh">draftsmith serve
+<pre><code class="language-sh">docker compose up
+
+# Or without docker
+draftsmith_api serve
 </code></pre>
-<h2 id="api"><a class="header" href="#api">API</a></h2>
+<h2 id="list-of-endpoints"><a class="header" href="#list-of-endpoints">List of Endpoints</a></h2>
+<p>The following endpoints are provided, with <code>POST</code>, <code>PUT</code>, <code>GET</code> and <code>DELETE</code>, implementations as described below:</p>
+<ul>
+<li>/notes
+<ul>
+<li>/notes/no-content</li>
+<li>/notes/search</li>
+<li>/notes/tree</li>
+<li>/notes/{id}</li>
+<li>/notes/{id}/tags</li>
+</ul>
+</li>
+<li>/tags
+<ul>
+<li>/tags/tree</li>
+<li>/tags/with-notes</li>
+<li>/tags/{id}</li>
+</ul>
+</li>
+<li>/task_clocks
+<ul>
+<li>/task_clocks/{id}</li>
+</ul>
+</li>
+<li>/task_schedules
+<ul>
+<li>/task_schedules/{id}</li>
+</ul>
+</li>
+<li>/tasks
+<ul>
+<li>/tasks/details</li>
+<li>/tasks/tree</li>
+<li>/tasks/{id}</li>
+</ul>
+</li>
+</ul>
+<h2 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h2>
+<h3 id="checklist"><a class="header" href="#checklist">Checklist</a></h3>
 <ul>
 <li>Notes
 <ul>
@@ -1025,13 +1053,13 @@ Get</li>
 Search</li>
 <li>hierarchy
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Create</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Get (Tree)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Delete</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Update</li>
 </ul>
 </li>
@@ -1041,30 +1069,37 @@ Update</li>
 <ul>
 <li><input disabled="" type="checkbox" checked=""/>
 Create</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Update</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Delete</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Assign</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Get</li>
-<li>Filter is left to client with a <code>fzf</code></li>
-<li><input disabled="" type="checkbox"/>
-Search
+<li>[-] Search
 <ul>
-<li>Search notes assigned to a tag</li>
+<li>As in Search notes assigned to a tag
+<ul>
+<li>Left to the client to filter out typical search results</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>[-] Filter
+<ul>
+<li>Left to the client to user a <code>fzf</code> tool</li>
 </ul>
 </li>
 <li>hierarchy
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Create</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Get (Tree)</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Delete</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Update</li>
 </ul>
 </li>
@@ -1074,46 +1109,56 @@ Update</li>
 <ul>
 <li>Assign
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Create</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Delete</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Update</li>
-<li><input disabled="" type="checkbox"/>
-Get</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Get
+<ul>
+<li>Getting Hierarchical tasks will involve merging in the details from the flat <code>/details</code> method.</li>
+</ul>
+</li>
 </ul>
 </li>
 <li>Schedule
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Create</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Delete</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Update</li>
-<li><input disabled="" type="checkbox"/>
-Get</li>
+<li>[-] Get
+<ul>
+<li>Included in the <code>tasks/details</code> endpoint.</li>
+</ul>
+</li>
 </ul>
 </li>
 <li>Clock in
 <ul>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Create</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Delete</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Update</li>
-<li><input disabled="" type="checkbox"/>
-Get</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Get
+<ul>
+<li>Included in the <code>tasks/details</code> endpoint.</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 </li>
 <li>Categories
 <ul>
-<li><input disabled="" type="checkbox"/>
-List</li>
+<li>Being removed</li>
 </ul>
 </li>
 </ul>
@@ -1603,6 +1648,8 @@ curl http://localhost:37238/notes/tree | jq
       -H "Content-Type: application/json" \
       -d '{"parent_note_id": 2, "hierarchy_type": "subpage"}'
 </code></pre>
+<pre><code>j"message":"Note hierarchy entry updated successfully"}
+</code></pre>
 <h5 id="delete-1"><a class="header" href="#delete-1">Delete</a></h5>
 <p>A note can only have one parent, so deleting a hierarchy tags the child tag as an argument.</p>
 <p>For example to remove to from whatever parent it has:</p>
@@ -1753,6 +1800,8 @@ curl http://localhost:37238/notes/tree | jq
   -d '{"parent_tag_id": 10, "child_tag_id": 5}'
 
 </code></pre>
+<pre><code class="language-json">{"message":"Tag hierarchy entry added successfully"}
+</code></pre>
 <h5 id="update-3"><a class="header" href="#update-3">Update</a></h5>
 <pre><code class="language-sh">curl -X PUT http://localhost:37238/tags/hierarchy/5 \
       -H "Content-Type: application/json" \
@@ -1857,6 +1906,30 @@ curl http://localhost:37238/notes/tree | jq
 <pre><code class="language-json">{"message":"Task deleted successfully"}
 </code></pre>
 <h5 id="get-tree-2"><a class="header" href="#get-tree-2">Get (tree)</a></h5>
+<pre><code class="language-sh">curl http://localhost:37238/tasks/tree | jq
+</code></pre>
+<pre><code>[
+  {
+    "id": 1,
+    "title": "First note",
+    "type": "",
+    "children": [
+      {
+        "id": 2,
+        "title": "Second note",
+        "type": "block",
+        "children": [
+          {
+            "id": 3,
+            "title": "Third note",
+            "type": "subpage"
+          }
+        ]
+      }
+    ]
+  }
+]
+</code></pre>
 <h5 id="get-flat"><a class="header" href="#get-flat">Get (flat)</a></h5>
 <p>The Get method returns tasks as a json like so:</p>
 <pre><code class="language-bash">curl http://localhost:37238/tasks/details | jq
@@ -1941,12 +2014,12 @@ curl http://localhost:37238/notes/tree | jq
 <h4 id="clock-in"><a class="header" href="#clock-in">Clock In</a></h4>
 <h5 id="create-6"><a class="header" href="#create-6">Create</a></h5>
 <pre><code class="language-bash">
-curl -X POST http://localhost:37238/task_schedules \
+curl -X POST http://localhost:37238/task_clocks \
  -H "Content-Type: application/json" \
  -d '{
      "task_id": 2,
-     "start_datetime": "2023-06-01T09:00:00Z",
-     "end_datetime": "2023-06-01T17:00:00Z"
+     "clock_in": "2023-06-01T09:00:00Z",
+     "clock_out": "2023-06-01T17:00:00Z"
  }'
 
 </code></pre>
@@ -2362,7 +2435,7 @@ curl -X POST http://localhost:37238/task_schedules \
   --color-pink: #d53984;
 }
 </style>
-<h1 id="api-1"><a class="header" href="#api-1">API</a></h1>
+<h1 id="api"><a class="header" href="#api">API</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <style>
 .mdbook-callouts {
