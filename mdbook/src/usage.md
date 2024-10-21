@@ -5,10 +5,37 @@
 First, start the server:
 
 ```sh
-draftsmith serve
+docker compose up
+
+# Or without docker
+draftsmith_api serve
 ```
 
-## API
+## List of Endpoints
+The following endpoints are provided, with `POST`, `PUT`, `GET` and `DELETE`, implementations as described below:
+
+- /notes
+    - /notes/no-content
+    - /notes/search
+    - /notes/tree
+    - /notes/{id}
+    - /notes/{id}/tags
+- /tags
+    - /tags/tree
+    - /tags/with-notes
+    - /tags/{id}
+- /task_clocks
+    - /task_clocks/{id}
+- /task_schedules
+    - /task_schedules/{id}
+- /tasks
+    - /tasks/details
+    - /tasks/tree
+    - /tasks/{id}
+
+## API Documentation
+
+### Checklist
 
 - Notes
     - [x] Create
@@ -17,42 +44,47 @@ draftsmith serve
     - [x] Get
     - [x] Search
     - hierarchy
-        - [ ] Create
-        - [ ] Get (Tree)
-        - [ ] Delete
-        - [ ] Update
+        - [x] Create
+        - [x] Get (Tree)
+        - [x] Delete
+        - [x] Update
 - Tags
     - [x] Create
-    - [ ] Update
-    - [ ] Delete
-    - [ ] Assign
-    - [ ] Get
-    - Filter is left to client with a `fzf`
-    - [ ] Search
-        - Search notes assigned to a tag
+    - [x] Update
+    - [x] Delete
+    - [x] Assign
+    - [x] Get
+    - [-] Search
+        - As in Search notes assigned to a tag
+            - Left to the client to filter out typical search results
+    - [-] Filter
+        - Left to the client to user a `fzf` tool
     - hierarchy
-        - [ ] Create
-        - [ ] Get (Tree)
-        - [ ] Delete
-        - [ ] Update
+        - [x] Create
+        - [x] Get (Tree)
+        - [x] Delete
+        - [x] Update
 - Tasks
     - Assign
-       - [ ] Create
-       - [ ] Delete
-       - [ ] Update
-       - [ ] Get
+       - [x] Create
+       - [x] Delete
+       - [x] Update
+       - [x] Get
+         - Getting Hierarchical tasks will involve merging in the details from the flat `/details` method.
     - Schedule
-        - [ ] Create
-        - [ ] Delete
-        - [ ] Update
-        - [ ] Get
+        - [x] Create
+        - [x] Delete
+        - [x] Update
+        - [-] Get
+            - Included in the `tasks/details` endpoint.
     - Clock in
-        - [ ] Create
-        - [ ] Delete
-        - [ ] Update
-        - [ ] Get
+        - [x] Create
+        - [x] Delete
+        - [x] Update
+        - [x] Get
+            - Included in the `tasks/details` endpoint.
 - Categories
-    - [ ] List
+    - Being removed
 
 
 
