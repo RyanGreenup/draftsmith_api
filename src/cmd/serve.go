@@ -657,25 +657,63 @@ func createTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func addTagToNote(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	noteID := vars["id"]
+    vars := mux.Vars(r)
+    noteID, err := strconv.Atoi(vars["id"])
+    if err != nil {
+        log.Printf("Invalid note ID: %v", err)
+        http.Error(w, "Invalid note ID", http.StatusBadRequest)
+        return
+    }
 
-	var addTag AddTagToNote
-	err := json.NewDecoder(r.Body).Decode(&addTag)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+    var addTag AddTagToNote
+    err = json.NewDecoder(r.Body).Decode(&addTag)
+    if err != nil {
+        log.Printf("Invalid request body: %v", err)
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
 
-	_, err = db.Exec("INSERT INTO note_tags (note_id, tag_id) VALUES ($1, $2)", noteID, addTag.TagID)
-	if err != nil {
-		log.Printf("Error adding tag to note: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+    log.Printf("Adding tag %d to note %d", addTag.TagID, noteID)
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Tag added to note successfully"})
+    // Check if the note exists
+    var noteExists bool
+    err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM notes WHERE id = $1)", noteID).Scan(&noteExists)
+    if err != nil {
+        log.Printf("Error checking note existence: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    if !noteExists {
+        log.Printf("Note %d not found", noteID)
+        http.Error(w, "Note not found", http.StatusNotFound)
+        return
+    }
+
+    // Check if the tag exists
+    var tagExists bool
+    err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM tags WHERE id = $1)", addTag.TagID).Scan(&tagExists)
+    if err != nil {
+        log.Printf("Error checking tag existence: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    if !tagExists {
+        log.Printf("Tag %d not found", addTag.TagID)
+        http.Error(w, "Tag not found", http.StatusNotFound)
+        return
+    }
+
+    // Insert the new relationship
+    _, err = db.Exec("INSERT INTO note_tags (note_id, tag_id) VALUES ($1, $2)", noteID, addTag.TagID)
+    if err != nil {
+        log.Printf("Error adding tag to note: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    log.Printf("Successfully added tag %d to note %d", addTag.TagID, noteID)
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "Tag added to note successfully"})
 }
 
 func listCategories(w http.ResponseWriter, r *http.Request) {
