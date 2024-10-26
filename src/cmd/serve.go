@@ -184,6 +184,35 @@ func listFiles(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(files)
 }
 
+func getAssetIDByFilename(w http.ResponseWriter, r *http.Request) {
+    filename := r.URL.Query().Get("filename")
+    if filename == "" {
+        http.Error(w, "Filename query parameter is required", http.StatusBadRequest)
+        return
+    }
+
+    var assetID int
+    err := db.QueryRow(`
+        SELECT id 
+        FROM assets 
+        WHERE SUBSTRING(location FROM '[^/]+$') = $1 
+        LIMIT 1
+    `, filename).Scan(&assetID)
+
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "File not found", http.StatusNotFound)
+        } else {
+            log.Printf("Error querying asset: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]int{"id": assetID})
+}
+
 // NoteTree represents a note and its children in a tree structure
 type NoteTree struct {
 	ID       int         `json:"id"`
