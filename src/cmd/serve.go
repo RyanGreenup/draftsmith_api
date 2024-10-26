@@ -2396,7 +2396,7 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
     }
 
     // Set the headers
-    w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s", fileName))
+    w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
     w.Header().Set("Content-Type", mimeType)
     w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
 
