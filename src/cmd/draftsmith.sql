@@ -68,7 +68,7 @@ CREATE TABLE assets (
  id SERIAL PRIMARY KEY,
  note_id INT REFERENCES notes(id),
  asset_type TEXT NOT NULL,
- location TEXT NOT NULL,
+ location TEXT NOT NULL UNIQUE,
  description TEXT,
  description_tsv tsvector,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Add this line
