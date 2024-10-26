@@ -427,6 +427,7 @@ func serve() {
 	r.HandleFunc("/assets/{id}", deleteFile).Methods("DELETE")
 	r.HandleFunc("/assets/{id}/download", downloadFile).Methods("GET")
 	r.HandleFunc("/assets", listFiles).Methods("GET")
+	r.HandleFunc("/assets/id", getAssetIDByFilename).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
