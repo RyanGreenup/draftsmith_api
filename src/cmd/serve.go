@@ -19,6 +19,56 @@ import (
 	"github.com/spf13/viper"
 )
 
+func cleanupOrphanedFiles() error {
+    // Get all file locations from the database
+    rows, err := db.Query("SELECT location FROM assets")
+    if err != nil {
+        return fmt.Errorf("error querying assets: %w", err)
+    }
+    defer rows.Close()
+
+    // Create a map to store all valid file paths
+    validPaths := make(map[string]bool)
+
+    for rows.Next() {
+        var location string
+        if err := rows.Scan(&location); err != nil {
+            return fmt.Errorf("error scanning asset location: %w", err)
+        }
+        validPaths[location] = true
+    }
+
+    if err := rows.Err(); err != nil {
+        return fmt.Errorf("error iterating asset rows: %w", err)
+    }
+
+    // Walk through the uploads directory
+    uploadsDir := "uploads"
+    err = filepath.Walk(uploadsDir, func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
+        if info.IsDir() {
+            return nil // Skip directories
+        }
+        if !validPaths[path] {
+            // If the file is not in the database, delete it
+            if err := os.Remove(path); err != nil {
+                log.Printf("Error deleting file %s: %v", path, err)
+            } else {
+                log.Printf("Deleted orphaned file: %s", path)
+            }
+        }
+        return nil
+    })
+
+    if err != nil {
+        return fmt.Errorf("error walking uploads directory: %w", err)
+    }
+
+    return nil
+}
+
 var db *sql.DB
 
 // Note represents a simplified note structure
@@ -380,6 +430,18 @@ func serve() {
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
+
+	// Start a goroutine to periodically clean up orphaned files
+	go func() {
+		for {
+			if err := cleanupOrphanedFiles(); err != nil {
+				log.Printf("Error cleaning up orphaned files: %v", err)
+			}
+			// Wait for 24 hours before the next cleanup
+			time.Sleep(24 * time.Hour)
+		}
+	}()
+
 	log.Fatal(http.ListenAndServe(portStr, r))
 }
 
