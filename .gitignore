@@ -1,3 +1,5 @@
 docs/.obsidian
 .aider*
 mdbook/src/.obsidian
+src/uploads
+uploads

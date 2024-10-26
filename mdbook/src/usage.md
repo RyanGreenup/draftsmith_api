@@ -711,30 +711,62 @@ curl http://localhost:37238/notes/tree
 #### Create (POST)
 
 ```bash
- curl -X POST \
-   http://localhost:8080/upload \
+curl -X POST \
+   http://localhost:37238/upload \
    -H "Content-Type: multipart/form-data" \
-   -F "file=@/path/to/your/file.jpg" \
+   -F "file=@/tmp/asldkfj.org" \
    -F "note_id=1" \
    -F "description=This is a sample image upload"
+
+
 ```
 
 One can upload without a description:
 
 ```bash
- curl -X POST \
-   http://localhost:8080/upload \
+curl -X POST \
+   http://localhost:37238/upload \
+   -H "Content-Type: multipart/form-data" \
+   -F "file=@/tmp/asldkfj.org" \
+   -F "note_id=1" \
+   -F "description=This is a sample image upload"
+```
+
+```
+{"filename":"asldkfj.org","message":"File uploaded successfully"}
+```
+
+Without a description:
+
+
+```bash
+   http://localhost:37238/upload \
    -H "Content-Type: multipart/form-data" \
    -F "file=@/path/to/your/file.txt" \
    -F "note_id=3"
 ```
 
+```
+{"filename":"asldkfj_2.org","message":"File uploaded successfully"}
+```
+
+This will simply upload the file into a `./uploads` directory from wherever the binary is run.
+
+It won't clober files either, they will be renamed.
+
+#### Get (GET)
 #### Delete (DELETE)
+Whilst a user could delete directly from the filesystem, it is better to use the API to ensure the database is updated. A user could of course remove the row from the `assets` table.
+
+```bash
+curl -X DELETE http://localhost:37238/assets/{id}
+```
+
+To get the id, use the `GET` method.
 #### Clean Unused (Danger)
 This checks for unused assets and removes them if they are not used.
 #### Update
 This is not implemented, but the client can delete and re-upload.
-#### Get (GET)
 ### Tags
 #### Flat
 ##### Create

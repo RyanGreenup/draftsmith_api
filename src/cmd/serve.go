@@ -2105,9 +2105,10 @@ func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry added successfully"})
 }
+
 func uploadFile(w http.ResponseWriter, r *http.Request) {
     // Parse the multipart form
-    err := r.ParseMultipartForm(10 << 20) // 10 MB max
+    err := r.ParseMultipartForm(10 << 29) // 5 GB max (Bitshifting 10*2**29)
     if err != nil {
         http.Error(w, "Unable to parse form", http.StatusBadRequest)
         return
@@ -2156,27 +2157,31 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
     }
 
     // Get other form values
-    noteID := r.FormValue("note_id")
     assetType := r.FormValue("asset_type")
     description := r.FormValue("description")
 
-    // Insert the file information into the database
-    _, err = db.Exec(`
-        INSERT INTO assets (note_id, asset_type, location, description)
-        VALUES ($1, $2, $3, $4)
-    `, noteID, assetType, filepath.Join(uploadsDir, filename), description)
+    // Insert the file information into the database and get the generated ID
+    var id int
+    err = db.QueryRow(`
+        INSERT INTO assets (asset_type, location, description)
+        VALUES ($1, $2, $3)
+        RETURNING id
+    `, assetType, filepath.Join(uploadsDir, filename), description).Scan(&id)
 
     if err != nil {
         http.Error(w, "Error saving to database", http.StatusInternalServerError)
         return
     }
 
+    // Respond with the created status and return the generated ID and filename
     w.WriteHeader(http.StatusCreated)
     json.NewEncoder(w).Encode(map[string]interface{}{
         "message": "File uploaded successfully",
         "filename": filename,
+        "id": id,
     })
 }
+
 
 func deleteFile(w http.ResponseWriter, r *http.Request) {
     // Get the asset ID from the URL parameters
