@@ -839,6 +839,8 @@ The cleanupOrphanedFiles function will run every 24 hours and cannot be ran manu
 import os
 import requests
 
+os.chdir('./uploads')
+
 def main():
     # The URL of the endpoint with the list of assets
     url = "http://localhost:37238/assets"
@@ -890,6 +892,15 @@ curl -X DELETE http://localhost:37238/assets/{id}
 
 To get the id, use the `GET` method or take note from the response when uploading.
 #### Get (GET)
+##### ID From Filename
+It is possible to get the ID from the filename, this is useful for wikis that want to link to the file without using the asset_id. Using `id` makes sense for notes as they are all contained in the database, but it does not make sense for assets as they are stored in the filesystem anyway.
+
+```bash
+curl "http://localhost:37238/assets/id?filename=README.md"
+```
+```json
+{"id":26}
+```
 ##### List Files
 
 ```bash
