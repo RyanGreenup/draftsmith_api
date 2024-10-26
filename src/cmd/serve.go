@@ -2121,13 +2121,27 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
     defer file.Close()
 
     // Create the uploads directory if it doesn't exist
-    if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+    uploadsDir := "uploads"
+    if err := os.MkdirAll(uploadsDir, os.ModePerm); err != nil {
         http.Error(w, "Unable to create upload directory", http.StatusInternalServerError)
         return
     }
 
+    // Generate a unique filename
+    filename := header.Filename
+    extension := filepath.Ext(filename)
+    nameWithoutExt := filename[:len(filename)-len(extension)]
+    counter := 1
+    for {
+        if _, err := os.Stat(filepath.Join(uploadsDir, filename)); os.IsNotExist(err) {
+            break
+        }
+        filename = fmt.Sprintf("%s_%d%s", nameWithoutExt, counter, extension)
+        counter++
+    }
+
     // Create a new file in the uploads directory
-    dst, err := os.Create(filepath.Join("uploads", header.Filename))
+    dst, err := os.Create(filepath.Join(uploadsDir, filename))
     if err != nil {
         http.Error(w, "Error creating destination file", http.StatusInternalServerError)
         return
@@ -2149,7 +2163,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
     _, err = db.Exec(`
         INSERT INTO assets (note_id, asset_type, location, description)
         VALUES ($1, $2, $3, $4)
-    `, noteID, assetType, filepath.Join("uploads", header.Filename), description)
+    `, noteID, assetType, filepath.Join(uploadsDir, filename), description)
 
     if err != nil {
         http.Error(w, "Error saving to database", http.StatusInternalServerError)
@@ -2157,5 +2171,8 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
     }
 
     w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]string{"message": "File uploaded successfully"})
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "message": "File uploaded successfully",
+        "filename": filename,
+    })
 }
