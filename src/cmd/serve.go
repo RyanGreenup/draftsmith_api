@@ -323,6 +323,7 @@ func serve() {
 	r.HandleFunc("/task_clocks/{id}", updateTaskClock).Methods("PUT")
 	r.HandleFunc("/tasks/tree", getTasksWithDetailsAsTree).Methods("GET")
 	r.HandleFunc("/upload", uploadFile).Methods("POST")
+	r.HandleFunc("/assets/{id}", deleteFile).Methods("DELETE")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -2175,4 +2176,58 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
         "message": "File uploaded successfully",
         "filename": filename,
     })
+}
+
+func deleteFile(w http.ResponseWriter, r *http.Request) {
+    // Get the asset ID from the URL parameters
+    vars := mux.Vars(r)
+    assetID := vars["id"]
+
+    // Start a transaction
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("Error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+
+    // Get the file location from the database
+    var fileLocation string
+    err = tx.QueryRow("SELECT location FROM assets WHERE id = $1", assetID).Scan(&fileLocation)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Asset not found", http.StatusNotFound)
+        } else {
+            log.Printf("Error querying asset: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // Delete the file from the filesystem
+    err = os.Remove(fileLocation)
+    if err != nil {
+        log.Printf("Error deleting file: %v", err)
+        http.Error(w, "Error deleting file", http.StatusInternalServerError)
+        return
+    }
+
+    // Delete the asset record from the database
+    _, err = tx.Exec("DELETE FROM assets WHERE id = $1", assetID)
+    if err != nil {
+        log.Printf("Error deleting asset record: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    // Commit the transaction
+    if err := tx.Commit(); err != nil {
+        log.Printf("Error committing transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"message": "File deleted successfully"})
 }
