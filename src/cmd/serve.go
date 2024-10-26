@@ -324,6 +324,7 @@ func serve() {
 	r.HandleFunc("/tasks/tree", getTasksWithDetailsAsTree).Methods("GET")
 	r.HandleFunc("/upload", uploadFile).Methods("POST")
 	r.HandleFunc("/assets/{id}", deleteFile).Methods("DELETE")
+	r.HandleFunc("/assets/{id}/download", downloadFile).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -2235,4 +2236,52 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"message": "File deleted successfully"})
+}
+
+func downloadFile(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    assetID := vars["id"]
+
+    // Get the file location and MIME type from the database
+    var fileLocation, mimeType, fileName string
+    err := db.QueryRow("SELECT location, asset_type, SUBSTRING(location FROM '[^/]+$') as filename FROM assets WHERE id = $1", assetID).Scan(&fileLocation, &mimeType, &fileName)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            http.Error(w, "Asset not found", http.StatusNotFound)
+        } else {
+            log.Printf("Error querying asset: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // Open the file
+    file, err := os.Open(fileLocation)
+    if err != nil {
+        log.Printf("Error opening file: %v", err)
+        http.Error(w, "Error opening file", http.StatusInternalServerError)
+        return
+    }
+    defer file.Close()
+
+    // Get the file size
+    stat, err := file.Stat()
+    if err != nil {
+        log.Printf("Error getting file stats: %v", err)
+        http.Error(w, "Error reading file", http.StatusInternalServerError)
+        return
+    }
+
+    // Set the headers
+    w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s", fileName))
+    w.Header().Set("Content-Type", mimeType)
+    w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+
+    // Stream the file to the response
+    _, err = io.Copy(w, file)
+    if err != nil {
+        log.Printf("Error streaming file: %v", err)
+        http.Error(w, "Error streaming file", http.StatusInternalServerError)
+        return
+    }
 }
