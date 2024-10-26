@@ -65,13 +65,15 @@ CREATE TABLE note_tags (
 
 -- Table for assets
 CREATE TABLE assets (
-    id SERIAL PRIMARY KEY,
-    note_id INT REFERENCES notes(id),
-    asset_type TEXT NOT NULL,
-    location TEXT NOT NULL,
-    description TEXT,
-    description_tsv tsvector
+ id SERIAL PRIMARY KEY,
+ note_id INT REFERENCES notes(id),
+ asset_type TEXT NOT NULL,
+ location TEXT NOT NULL,
+ description TEXT,
+ description_tsv tsvector,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Add this line
 );
+
 
 -- Create a function to automatically update the tsvector column
 CREATE FUNCTION assets_description_trigger() RETURNS trigger AS $$
