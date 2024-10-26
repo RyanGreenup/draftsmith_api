@@ -83,6 +83,56 @@ type FileUpload struct {
     Description string `json:"description"`
 }
 
+type FileInfo struct {
+    ID          int    `json:"id"`
+    FileName    string `json:"file_name"`
+    AssetType   string `json:"asset_type"`
+    Description string `json:"description"`
+    CreatedAt   string `json:"created_at"`
+}
+
+func listFiles(w http.ResponseWriter, r *http.Request) {
+    // Query to get all files from the database
+    rows, err := db.Query(`
+        SELECT id, 
+               SUBSTRING(location FROM '[^/]+$') as file_name, 
+               asset_type, 
+               description, 
+               created_at
+        FROM assets
+        ORDER BY created_at DESC
+    `)
+    if err != nil {
+        log.Printf("Error querying assets: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var files []FileInfo
+    for rows.Next() {
+        var file FileInfo
+        var createdAt time.Time
+        err := rows.Scan(&file.ID, &file.FileName, &file.AssetType, &file.Description, &createdAt)
+        if err != nil {
+            log.Printf("Error scanning row: %v", err)
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+            return
+        }
+        file.CreatedAt = createdAt.Format(time.RFC3339)
+        files = append(files, file)
+    }
+
+    if err := rows.Err(); err != nil {
+        log.Printf("Error after scanning rows: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(files)
+}
+
 // NoteTree represents a note and its children in a tree structure
 type NoteTree struct {
 	ID       int         `json:"id"`
@@ -325,6 +375,7 @@ func serve() {
 	r.HandleFunc("/upload", uploadFile).Methods("POST")
 	r.HandleFunc("/assets/{id}", deleteFile).Methods("DELETE")
 	r.HandleFunc("/assets/{id}/download", downloadFile).Methods("GET")
+	r.HandleFunc("/assets", listFiles).Methods("GET")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
