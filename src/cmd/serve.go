@@ -145,10 +145,10 @@ type FileInfo struct {
 func listFiles(w http.ResponseWriter, r *http.Request) {
     // Query to get all files from the database
     rows, err := db.Query(`
-        SELECT id, 
-               SUBSTRING(location FROM '[^/]+$') as file_name, 
-               asset_type, 
-               description, 
+        SELECT id,
+               SUBSTRING(location FROM '[^/]+$') as file_name,
+               asset_type,
+               description,
                created_at
         FROM assets
         ORDER BY created_at DESC
@@ -2325,12 +2325,20 @@ func deleteFile(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Delete the file from the filesystem
-    err = os.Remove(fileLocation)
-    if err != nil {
-        log.Printf("Error deleting file: %v", err)
-        http.Error(w, "Error deleting file", http.StatusInternalServerError)
-        return
+    // Check if the file exists
+    if _, err := os.Stat(fileLocation); os.IsNotExist(err) {
+        log.Printf("File does not exist: %s", fileLocation)
+        // This endpoint is called specifically for deletion
+        // So if the file doesn't exist, we can consider it deleted
+        // Shouldn't lead to data loss as the user is trying to delete it
+    } else {
+        // Attempt to remove the file
+        err = os.Remove(fileLocation)
+        if err != nil {
+            log.Printf("Error deleting file: %v", err)
+            http.Error(w, "Error deleting file", http.StatusInternalServerError)
+            return
+        }
     }
 
     // Delete the asset record from the database

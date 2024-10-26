@@ -708,6 +708,42 @@ curl http://localhost:37238/notes/tree
 ]
 ```
 ### Assets
+The assets are stored in a `./uploads` directory. Each file has an entry in the database:
+
+```sql
+SELECT * FROM ASSETS;
+```
+```
+draftsmith=# select * from assets;
+ id | note_id | asset_type |       location        |          description          |         created_at
+----+---------+------------+-----------------------+-------------------------------+----------------------------
+  2 |       1 |            | uploads/asldkfj.org   | This is a sample image upload | 2024-10-26 07:14:01.973793
+  3 |       1 |            | uploads/asldkfj.org   | This is a sample image upload | 2024-10-26 07:14:01.973793
+  4 |       1 |            | uploads/asldkfj.org   | This is a sample image upload | 2024-10-26 07:14:01.973793
+  5 |       1 |            | uploads/asldkfj.org   | This is a sample image upload | 2024-10-26 07:14:01.973793
+  6 |       1 |            | uploads/asldkfj.org   | This is a sample image upload | 2024-10-26 07:14:01.973793
+  7 |       1 |            | uploads/asldkfj.org   | This is a sample image upload | 2024-10-26 07:14:01.973793
+  8 |       1 |            | uploads/asldkfj_1.org | This is a sample image upload | 2024-10-26 07:14:01.973793
+  9 |       1 |            | uploads/asldkfj_2.org | This is a sample image upload | 2024-10-26 07:14:01.973793
+ 10 |       1 |            | uploads/asldkfj_3.org |                               | 2024-10-26 07:14:01.973793
+ 11 |       1 |            | uploads/asldkfj.org   |                               | 2024-10-26 07:14:01.973793
+ 12 |       1 |            | uploads/asldkfj_4.org |                               | 2024-10-26 07:14:01.973793
+ 15 |         |            | uploads/asldkfj_5.org |                               | 2024-10-26 07:14:01.973793
+ 16 |         |            | uploads/asldkfj_6.org |                               | 2024-10-26 07:14:01.973793
+(13 rows)
+```
+
+The database tracks the content primarily for the `note_id` and `description` fields:
+
+  - `note_id`
+      - Not Implemented
+          - A page that will represent this asset, much like mediawiki it can serve as a place to serve notes, citations or code used to generate it (e.g. python / R plots or TikZ / Asymptote diagrams).
+  - `description`
+      - Not Implemented
+          - This will be used for search, either by running `pdftotext` on the file or using LLava to automatically describe the images.
+
+The `location` field is the path to the file in the `./uploads` directory.
+
 #### Create (POST)
 
 ```bash
@@ -733,7 +769,7 @@ curl -X POST \
 ```
 
 ```
-{"filename":"asldkfj.org","message":"File uploaded successfully"}
+{"filename":"asldkfj.org","id":1,"message":"File uploaded successfully"}
 ```
 
 Without a description:
@@ -747,22 +783,149 @@ Without a description:
 ```
 
 ```
-{"filename":"asldkfj_2.org","message":"File uploaded successfully"}
+{"filename":"asldkfj_2.org","id":2,"message":"File uploaded successfully"}
 ```
 
 This will simply upload the file into a `./uploads` directory from wherever the binary is run.
 
 It won't clober files either, they will be renamed.
 
-#### Get (GET)
 #### Delete (DELETE)
+##### DB Entries with No Files
+This is not implemented as I can foresee pain when people move around docker containers. Here's a python script that calls the `DELETE` method. The `DELETE` method succeeds even if the file is not found, the logic is:
+
+
+1. GET request for database entries.
+2. Check if each asset's `file_name` exists in the `./uploads` directory.
+3. If the file does not exist, send a DELETE request to remove the asset from the db.
+
+```python
+import os
+import requests
+
+# Base URL for the API
+base_url = 'http://localhost:37238/assets'
+
+# Directory to check for file existence
+uploads_directory = './uploads'
+
+# Get the list of assets
+response = requests.get(base_url)
+
+if response.status_code == 200:
+    assets = response.json()
+    for asset in assets:
+        file_name = asset['file_name']
+        file_path = os.path.join(uploads_directory, file_name)
+
+        # Check if file exists in the uploads directory
+        if not os.path.isfile(file_path):
+            # File does not exist, perform DELETE
+            delete_url = f"{base_url}/{asset['id']}"
+            delete_response = requests.delete(delete_url)
+
+            if delete_response.status_code == 200:
+                print(f"Deleted asset with ID: {asset['id']}")
+            else:
+                print(f"Failed to delete asset with ID: {asset['id']}. Status code: {delete_response.status_code}")
+else:
+    print(f"Failed to retrieve assets. Status code: {response.status_code}")
+```
+
+##### Files with No DB Entry
+The cleanupOrphanedFiles function will run every 24 hours and cannot be ran manually. If a user wishes to run this manually, they can do so by running the following command:
+
+```bash
+import os
+import requests
+
+def main():
+    # The URL of the endpoint with the list of assets
+    url = "http://localhost:37238/assets"
+
+    try:
+        # Send a GET request to the URL
+        response = requests.get(url)
+        # Raise an exception if the request was not successful
+        response.raise_for_status()
+
+        # Parse the JSON response
+        assets = response.json()
+
+        # Validating the response to ensure it's a list of dictionaries
+        if not isinstance(assets, list) or not all(isinstance(asset, dict) for asset in assets):
+            print("Unexpected response format.")
+            return
+
+        # Extracting the file names from the JSON list
+        allowed_file_names = {asset['file_name'] for asset in assets}
+
+        # Get the list of files in the current directory
+        current_files = os.listdir('.')
+
+        # Loop through the files in the current directory
+        for file in current_files:
+            # Check if it's a file and not in the allowed list
+            if os.path.isfile(file) and file not in allowed_file_names:
+                print(f"Deleting file: {file}")
+                os.remove(file)
+
+        print("Operation completed.")
+
+    except requests.exceptions.RequestException as e:
+        print(f"HTTP Request failed: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
+
+```
+##### Asset
 Whilst a user could delete directly from the filesystem, it is better to use the API to ensure the database is updated. A user could of course remove the row from the `assets` table.
 
 ```bash
 curl -X DELETE http://localhost:37238/assets/{id}
 ```
 
-To get the id, use the `GET` method.
+To get the id, use the `GET` method or take note from the response when uploading.
+#### Get (GET)
+##### List Files
+
+```bash
+curl http://localhost:37238/assets | jq
+```
+
+```json
+[
+  {
+    "id": 2,
+    "file_name": "asldkfj.org",
+    "asset_type": "",
+    "description": "This is a sample image upload",
+    "created_at": "2024-10-26T07:14:01Z"
+  },
+  {
+    "id": 3,
+    "file_name": "asldkfj.org",
+    "asset_type": "",
+    "description": "This is a sample image upload",
+    "created_at": "2024-10-26T07:14:01Z"
+  }
+]
+```
+
+##### Download
+There is a dedicated endpoint for downloading files, there is not a server hosting all files. This is so the server can be extended for multiple users at some stage in the future.
+
+```bash
+curl -O -J "http://localhost:37238/assets/1/download"
+cat asldkfj.org
+```
+```
+This is a sample file
+```
+
 #### Clean Unused (Danger)
 This checks for unused assets and removes them if they are not used.
 #### Update
