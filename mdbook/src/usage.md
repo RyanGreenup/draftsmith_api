@@ -897,10 +897,29 @@ It is possible to get the ID from the filename, this is useful for wikis that wa
 
 ```bash
 curl "http://localhost:37238/assets/id?filename=README.md"
+curl "http://localhost:37238/assets/id?filename=README_1.md"
+curl "http://localhost:37238/assets/id?filename=uploads/README.md"
 ```
 ```json
 {"id":26}
+{"id":26}
+File not found
 ```
+
+Note that this infers the presence of `/uploads`, for example, the table for the above query:
+
+``` sql
+SELECT * FROM assets;
+```
+```
+ id | note_id | asset_type |      location       | description |         created_at
+----+---------+------------+---------------------+-------------+----------------------------
+ 26 |         |            | uploads/README.md   |             | 2024-10-26 08:21:56.022904
+ 27 |         |            | uploads/README_1.md |             | 2024-10-26 08:21:56.162849
+ 28 |         |            | uploads/README_2.md |             | 2024-10-26 08:22:05.492284
+```
+
+
 ##### List Files
 
 ```bash
