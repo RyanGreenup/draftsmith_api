@@ -19,7 +19,7 @@ CREATE TABLE notes (
 -- Trigger to update the full-text search vector
 CREATE TRIGGER notes_fts_update
 BEFORE INSERT OR UPDATE ON notes
-FOR EACH ROW EXECUTE FUNCTION tsvector_update_trigger(
+FOR EACH ROW EXECUTE PROCEDURE tsvector_update_trigger(
     fts, 'pg_catalog.english', title, content
 );
 
@@ -84,7 +84,7 @@ $$ LANGUAGE plpgsql;
 -- Create a trigger to call the function before insert or update
 CREATE TRIGGER assets_description_update
 BEFORE INSERT OR UPDATE ON assets
-FOR EACH ROW EXECUTE PROCEDURE assets_description_trigger();
+FOR EACH ROW EXECUTE FUNCTION assets_description_trigger();
 
 -- Create an index on the tsvector column
 CREATE INDEX assets_description_tsv_idx ON assets USING gin(description_tsv);
@@ -144,11 +144,11 @@ CREATE TABLE tasks (
     effort_estimate NUMERIC,              -- Estimated effort in hours
     actual_effort NUMERIC,                -- Actual effort in hours
     deadline TIMESTAMP,                   -- Deadline for the task
-    priority INT CHECK (priority BETWEEN 1 AND 5), -- Priority of the task
+    priority INT CHECK (priority IS NULL OR priority BETWEEN 1 AND 5), -- Priority of the task
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     all_day BOOLEAN DEFAULT FALSE,  -- Flag for all-day events (e.g. Daylight Saving savings on this day)
-    goal_relationship INT CHECK (goal_relationship BETWEEN 1 AND 5), -- Relationship to goals
+    goal_relationship INT CHECK (goal_relationship IS NULL OR goal_relationship BETWEEN 1 AND 5), -- Relationship to goals
     UNIQUE (note_id)  -- A note can only be a task once, otherwise conflicts arise with schedule etc.
 );
 
