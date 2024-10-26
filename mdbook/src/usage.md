@@ -926,6 +926,17 @@ cat asldkfj.org
 This is a sample file
 ```
 
+This link can be used to display the file in the browser (e.g. a Flask / Axum server):
+
+```html
+ <!-- For images -->
+ <img src="http://localhost:37238/assets/1/download" alt="Description of image">
+
+ <!-- For other file types -->
+ <a href="http://localhost:37238/assets/2/download">Download File</a>
+
+```
+
 #### Clean Unused (Danger)
 This checks for unused assets and removes them if they are not used.
 #### Update
