@@ -707,6 +707,34 @@ curl http://localhost:37238/notes/tree
   }
 ]
 ```
+### Assets
+#### Create (POST)
+
+```bash
+ curl -X POST \
+   http://localhost:8080/upload \
+   -H "Content-Type: multipart/form-data" \
+   -F "file=@/path/to/your/file.jpg" \
+   -F "note_id=1" \
+   -F "description=This is a sample image upload"
+```
+
+One can upload without a description:
+
+```bash
+ curl -X POST \
+   http://localhost:8080/upload \
+   -H "Content-Type: multipart/form-data" \
+   -F "file=@/path/to/your/file.txt" \
+   -F "note_id=3"
+```
+
+#### Delete (DELETE)
+#### Clean Unused (Danger)
+This checks for unused assets and removes them if they are not used.
+#### Update
+This is not implemented, but the client can delete and re-upload.
+#### Get (GET)
 ### Tags
 #### Flat
 ##### Create
