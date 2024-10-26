@@ -69,8 +69,25 @@ CREATE TABLE assets (
     note_id INT REFERENCES notes(id),
     asset_type TEXT NOT NULL,
     location TEXT NOT NULL,
-    description TEXT
+    description TEXT,
+    description_tsv tsvector
 );
+
+-- Create a function to automatically update the tsvector column
+CREATE FUNCTION assets_description_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.description_tsv := to_tsvector('english', NEW.description);
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+-- Create a trigger to call the function before insert or update
+CREATE TRIGGER assets_description_update
+BEFORE INSERT OR UPDATE ON assets
+FOR EACH ROW EXECUTE FUNCTION assets_description_trigger();
+
+-- Create an index on the tsvector column
+CREATE INDEX assets_description_tsv_idx ON assets USING gin(description_tsv);
 
 -- Table for misc attributes
 CREATE TABLE attributes (

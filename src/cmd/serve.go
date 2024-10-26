@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -72,6 +75,12 @@ type TagTree struct {
 	Name     string     `json:"name"`
 	Notes    []NoteInfo `json:"notes"`
 	Children []*TagTree `json:"children,omitempty"`
+}
+
+type FileUpload struct {
+    NoteID      int    `json:"note_id"`
+    AssetType   string `json:"asset_type"`
+    Description string `json:"description"`
 }
 
 // NoteTree represents a note and its children in a tree structure
@@ -313,6 +322,7 @@ func serve() {
 	r.HandleFunc("/task_clocks/{id}", deleteTaskClock).Methods("DELETE")
 	r.HandleFunc("/task_clocks/{id}", updateTaskClock).Methods("PUT")
 	r.HandleFunc("/tasks/tree", getTasksWithDetailsAsTree).Methods("GET")
+	r.HandleFunc("/upload", uploadFile).Methods("POST")
 
 	portStr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Server is running on http://localhost%s\n", portStr)
@@ -2093,4 +2103,59 @@ func addTagHierarchyEntry(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Tag hierarchy entry added successfully"})
+}
+func uploadFile(w http.ResponseWriter, r *http.Request) {
+    // Parse the multipart form
+    err := r.ParseMultipartForm(10 << 20) // 10 MB max
+    if err != nil {
+        http.Error(w, "Unable to parse form", http.StatusBadRequest)
+        return
+    }
+
+    // Get the file from the form
+    file, header, err := r.FormFile("file")
+    if err != nil {
+        http.Error(w, "Error retrieving file", http.StatusBadRequest)
+        return
+    }
+    defer file.Close()
+
+    // Create the uploads directory if it doesn't exist
+    if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+        http.Error(w, "Unable to create upload directory", http.StatusInternalServerError)
+        return
+    }
+
+    // Create a new file in the uploads directory
+    dst, err := os.Create(filepath.Join("uploads", header.Filename))
+    if err != nil {
+        http.Error(w, "Error creating destination file", http.StatusInternalServerError)
+        return
+    }
+    defer dst.Close()
+
+    // Copy the uploaded file to the destination file
+    if _, err := io.Copy(dst, file); err != nil {
+        http.Error(w, "Error copying file", http.StatusInternalServerError)
+        return
+    }
+
+    // Get other form values
+    noteID := r.FormValue("note_id")
+    assetType := r.FormValue("asset_type")
+    description := r.FormValue("description")
+
+    // Insert the file information into the database
+    _, err = db.Exec(`
+        INSERT INTO assets (note_id, asset_type, location, description)
+        VALUES ($1, $2, $3, $4)
+    `, noteID, assetType, filepath.Join("uploads", header.Filename), description)
+
+    if err != nil {
+        http.Error(w, "Error saving to database", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]string{"message": "File uploaded successfully"})
 }
