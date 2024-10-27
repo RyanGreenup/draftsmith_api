@@ -2427,13 +2427,58 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
     // Set the headers
     w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
     
-    // Handle SVG files specifically
-    if strings.ToLower(filepath.Ext(fileName)) == ".svg" {
-        w.Header().Set("Content-Type", "image/svg+xml")
-    } else {
-        w.Header().Set("Content-Type", mimeType)
+    // Determine MIME type based on file extension
+    ext := strings.ToLower(filepath.Ext(fileName))
+    switch ext {
+    case ".svg":
+        mimeType = "image/svg+xml"
+    case ".jpg", ".jpeg":
+        mimeType = "image/jpeg"
+    case ".png":
+        mimeType = "image/png"
+    case ".gif":
+        mimeType = "image/gif"
+    case ".webp":
+        mimeType = "image/webp"
+    case ".mp4":
+        mimeType = "video/mp4"
+    case ".webm":
+        mimeType = "video/webm"
+    case ".ogg":
+        mimeType = "video/ogg"
+    case ".txt":
+        mimeType = "text/plain"
+    case ".md", ".markdown":
+        mimeType = "text/markdown"
+    case ".pdf":
+        mimeType = "application/pdf"
+    case ".doc", ".docx":
+        mimeType = "application/msword"
+    case ".xls", ".xlsx":
+        mimeType = "application/vnd.ms-excel"
+    case ".ppt", ".pptx":
+        mimeType = "application/vnd.ms-powerpoint"
+    case ".zip":
+        mimeType = "application/zip"
+    case ".json":
+        mimeType = "application/json"
+    case ".xml":
+        mimeType = "application/xml"
+    case ".html", ".htm":
+        mimeType = "text/html"
+    case ".css":
+        mimeType = "text/css"
+    case ".js":
+        mimeType = "application/javascript"
+    default:
+        // If we can't determine the MIME type, use the one from the database
+        // or fall back to "application/octet-stream"
+        if mimeType == "" {
+            mimeType = "application/octet-stream"
+        }
     }
     
+    w.Header().Set("Content-Type", mimeType)
     w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
 
     // Stream the file to the response
