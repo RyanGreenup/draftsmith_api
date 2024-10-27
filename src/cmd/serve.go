@@ -2426,7 +2426,14 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 
     // Set the headers
     w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-    w.Header().Set("Content-Type", mimeType)
+    
+    // Handle SVG files specifically
+    if strings.ToLower(filepath.Ext(fileName)) == ".svg" {
+        w.Header().Set("Content-Type", "image/svg+xml")
+    } else {
+        w.Header().Set("Content-Type", mimeType)
+    }
+    
     w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
 
     // Stream the file to the response
